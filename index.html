@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Operação PMBA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: painel tático escuro. Cabeçalho fixo, navegação por abas (rodapé no celular), conteúdo em grade de cartões. */
+:root{
+  --bg:#070e1b;          /* azul-marinho profundo */
+  --panel:#0d1a2e;       /* painel */
+  --panel2:#13233b;      /* painel elevado */
+  --lead:#252e38;        /* cinza chumbo */
+  --line:#23344d;
+  --fg:#e6edf6;
+  --muted:#8fa0b5;
+  --ok:#10b981;          /* verde-esmeralda: conclusão */
+  --gold:#f2c14e;        /* dourado: conquistas */
+  --bad:#f0616d;
+  --f-display:'Chakra Petch','Inter',system-ui,sans-serif;
+  --f-body:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--bg)}
+body{
+  background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;
+  margin:0;padding-block:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  background-image:radial-gradient(1200px 500px at 85% -10%,rgba(16,185,129,.07),transparent 60%),radial-gradient(900px 500px at -10% 10%,rgba(242,193,78,.05),transparent 60%);
+  background-attachment:fixed;
+}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:60;background:var(--bg)}
+.font-display{font-family:var(--f-display)}
+.font-mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.tnum{font-variant-numeric:tabular-nums}
+input,select,textarea,button{font-family:inherit}
+input[type=checkbox]{accent-color:var(--ok)}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px}
+::-webkit-scrollbar{height:8px;width:8px}::-webkit-scrollbar-thumb{background:#2a3d58;border-radius:8px}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px}
+.field{background:#0a1526;border:1px solid var(--line);border-radius:8px;color:var(--fg);padding:.5rem .65rem;width:100%;min-width:0}
+.field:focus{border-color:var(--gold);outline:none}
+select.field option{background:#0a1526;color:var(--fg)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;border-radius:9px;padding:.55rem .9rem;font-weight:600;font-size:.875rem;border:1px solid var(--line);background:var(--lead);color:var(--fg);cursor:pointer;transition:transform .12s,background .15s,border-color .15s}
+.btn:hover{background:#2f3a47;border-color:#3a4c66}.btn:active{transform:scale(.97)}
+.btn-ok{background:var(--ok);border-color:var(--ok);color:#03160f}.btn-ok:hover{background:#34d399;border-color:#34d399}
+.btn-gold{background:var(--gold);border-color:var(--gold);color:#1d1503}.btn-gold:hover{background:#f7d27a;border-color:#f7d27a}
+.btn-ghost{background:transparent}
+.btn-sm{padding:.35rem .6rem;font-size:.8rem}
+.chip{display:inline-flex;align-items:center;gap:.35rem;border-radius:999px;padding:.2rem .6rem;font-size:.75rem;font-weight:600;border:1px solid var(--line);background:#0a1526;color:var(--muted);cursor:pointer;white-space:nowrap}
+.chip.on{background:rgba(242,193,78,.14);border-color:rgba(242,193,78,.55);color:var(--gold)}
+.tag{display:inline-flex;align-items:center;border-radius:6px;padding:.12rem .45rem;font-size:.68rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap}
+.tag-o{background:rgba(242,193,78,.16);color:var(--gold);border:1px solid rgba(242,193,78,.4)}
+.tag-m{background:rgba(125,160,210,.14);color:#9db8e0;border:1px solid rgba(125,160,210,.35)}
+.tag-p{background:rgba(143,160,181,.1);color:var(--muted);border:1px solid rgba(143,160,181,.3)}
+.bar{height:8px;border-radius:99px;background:#0a1526;overflow:hidden;border:1px solid var(--line)}
+.bar>i{display:block;height:100%;border-radius:99px;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.label{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+/* checkbox animado */
+.chk{width:26px;height:26px;border-radius:8px;border:2px solid #3a4c66;background:#0a1526;display:grid;place-items:center;flex:none;cursor:pointer;transition:background .2s,border-color .2s,box-shadow .3s}
+.chk.on{background:var(--ok);border-color:var(--ok);box-shadow:0 0 0 4px rgba(16,185,129,.18)}
+.chk svg{opacity:0;transform:scale(.3);color:#03160f}
+.chk.on svg{opacity:1;animation:pop .42s cubic-bezier(.2,1.6,.4,1) forwards}
+@keyframes pop{0%{transform:scale(.2) rotate(-25deg)}60%{transform:scale(1.35) rotate(6deg)}100%{transform:scale(1) rotate(0)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.shake{animation:shake .35s}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.rise{animation:rise .35s ease both}
+/* flashcard 3D */
+.persp{perspective:1400px}
+.flip{position:relative;height:100%;transform-style:preserve-3d;transition:transform .6s cubic-bezier(.2,.8,.2,1)}
+.flip.on{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:16px;padding:1.25rem;display:flex;flex-direction:column;overflow:auto}
+.face.back{transform:rotateY(180deg)}
+.dragover{outline:2px dashed var(--gold);outline-offset:2px}
+.glow-gold{box-shadow:0 0 0 1px rgba(242,193,78,.4),0 0 30px rgba(242,193,78,.12)}
+.nav-bottom{position:fixed;left:0;right:0;bottom:0;z-index:50;background:rgba(7,14,27,.94);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
+@media (min-width:768px){.nav-bottom{position:static;background:none;border:0;backdrop-filter:none;padding:0}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+#loading{display:grid;place-items:center;min-height:60vh;color:var(--muted);font-family:var(--f-display);letter-spacing:.1em}
+</style>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+tailwind.config={theme:{extend:{colors:{emerald:{400:'#34d399',500:'#10b981',600:'#059669'}}}}};
+</script>
+</head>
+<body>
+<div id="root"><div id="loading">CARREGANDO PAINEL…</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script>window.react=window.React;</script>
+<script src="https://unpkg.com/lucide-react@0.263.1/dist/umd/lucide-react.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<script type="text/babel" data-presets="react">
+const {useState,useEffect,useMemo,useRef,useCallback} = React;
+const LU = window.LucideReact || {};
+const Ic = ({n,size=18,className='',...p}) => { const C=LU[n]; return C ? <C size={size} className={className} {...p}/> : <span style={{display:'inline-block',width:size,height:size}}/>; };
+
+/* ============ utilidades ============ */
+const pad=n=>String(n).padStart(2,'0');
+const isoOf=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const todayISO=()=>isoOf(new Date());
+const parseISO=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);};
+const DIAS=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+const DIAS_C=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const uid=()=>Math.random().toString(36).slice(2,9);
+const ri=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const pick=a=>a[ri(0,a.length-1)];
+const shuffle=a=>{const r=[...a];for(let i=r.length-1;i>0;i--){const j=ri(0,i);[r[i],r[j]]=[r[j],r[i]];}return r;};
+const fmt=n=>String(Math.round(n*100)/100).replace('.',',');
+const addMin=(hhmm,m)=>{const [h,mi]=hhmm.split(':').map(Number);const t=(h*60+mi+m+1440)%1440;return pad(Math.floor(t/60))+':'+pad(t%60);};
+const ft=s=>{const m=Math.floor(s/60);return pad(m)+':'+pad(s%60);};
+
+/* ============ som e confete ============ */
+let SOUND_ON=true, AC=null;
+function tone(freqs,dur=.12,vol=.05){
+  if(!SOUND_ON) return;
+  try{
+    AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state==='suspended') AC.resume();
+    freqs.forEach((f,i)=>{
+      const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.value=f;
+      const t=AC.currentTime+i*dur*.8;
+      g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(vol,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+dur+.12);
+      o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+dur+.15);
+    });
+  }catch(e){}
+}
+const SFX={ok:()=>tone([523,659,784]),bad:()=>tone([180],.22,.06),done:()=>tone([784,988,1175],.2,.07),rank:()=>tone([523,659,784,1047],.18,.07),flip:()=>tone([440],.05,.025)};
+function burst(x,y,n=16){
+  try{ if(matchMedia('(prefers-reduced-motion: reduce)').matches) return; }catch(e){}
+  const cols=['#10b981','#34d399','#f2c14e','#e8aa1c','#7dd3fc'];
+  for(let i=0;i<n;i++){
+    const e=document.createElement('i');
+    Object.assign(e.style,{position:'fixed',left:x+'px',top:y+'px',width:'7px',height:'7px',borderRadius:Math.random()<.5?'50%':'2px',background:pick(cols),zIndex:100,pointerEvents:'none'});
+    document.body.appendChild(e);
+    const a=Math.random()*Math.PI*2,d=34+Math.random()*60;
+    const an=e.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d+26}px) rotate(${Math.random()*540}deg) scale(.3)`,opacity:0}],{duration:650+Math.random()*350,easing:'cubic-bezier(.2,.8,.3,1)'});
+    an.onfinish=()=>e.remove();
+  }
+}
+const burstEl=(el,n)=>{if(!el)return;const r=el.getBoundingClientRect();burst(r.left+r.width/2,r.top+r.height/2,n);};
+
+/* ============ dados: edital ============ */
+// prioridades: o = Alta/Ouro, m = Média, p = Deixar p/ Pós-Edital
+const DISC=[
+ {id:'lp',nome:'Língua Portuguesa',curto:'Português',cor:'#38bdf8',t:[
+  ['Compreensão e interpretação de textos','o'],['Tipologia e gêneros textuais','m'],['Ortografia oficial e acentuação gráfica','m'],['Classes de palavras e seu emprego','m'],
+  ['Sintaxe da oração e do período','o'],['Concordância verbal e nominal','o'],['Regência verbal e nominal','o'],['Emprego do acento grave (crase)','o'],['Pontuação','o'],
+  ['Colocação pronominal','m'],['Significação das palavras (sinonímia, antonímia, denotação e conotação)','m'],['Coesão, coerência e reescrita de frases','m'],
+  ['Redação oficial: ofício, memorando, requerimento, ata','o'],['Figuras de linguagem','p']]},
+ {id:'ing',nome:'Língua Inglesa',curto:'Inglês',cor:'#a78bfa',t:[
+  ['Compreensão de textos em inglês','o'],['Vocabulário, cognatos e falsos cognatos','o'],['Conectivos e palavras de ligação','m'],['Tempos verbais','m'],
+  ['Pronomes, artigos e substantivos','m'],['Adjetivos, advérbios e graus de comparação','p'],['Verbos modais','p'],['Voz passiva','p']]},
+ {id:'mat',nome:'Matemática',curto:'Matemática',cor:'#f59e0b',t:[
+  ['Porcentagem','o'],['Regra de três simples','o'],['Conjuntos e operações com conjuntos (diagramas)','o'],['Estatística: média, mediana e moda','o'],['Raciocínio lógico: sequências','o'],
+  ['Regra de três composta','m'],['Razão e proporção','m'],['Operações com números naturais, inteiros e racionais','m'],['Juros simples','m'],['Sistema métrico decimal e unidades de medida','m'],['Equações do 1º grau','m'],
+  ['Análise combinatória e probabilidade','p'],['Equações do 2º grau e funções','p'],['Geometria plana: áreas e perímetros','p'],['Juros compostos','p']]},
+ {id:'inf',nome:'Informática',curto:'Informática',cor:'#22d3ee',t:[
+  ['Internet, navegadores e correio eletrônico','o'],['Segurança da informação: malwares, phishing e backup','o'],['Conceitos de hardware e software','m'],['Sistemas operacionais (Windows e Linux)','m'],
+  ['Editor de textos (Word/Writer)','m'],['Planilhas (Excel/Calc): fórmulas e funções','m'],['Redes de computadores e protocolos','m'],['Computação em nuvem','m'],['Armazenamento e extensões de arquivos','p'],['Redes sociais e ferramentas de colaboração','p']]},
+ {id:'his',nome:'História (Brasil e Bahia)',curto:'História',cor:'#fb923c',t:[
+  ['Colonização portuguesa e economia açucareira na Bahia','o'],['Salvador: capital colonial e Governo-Geral','o'],['Escravidão e resistência negra: quilombos','o'],['Conjuração Baiana (1798)','o'],
+  ['Independência do Brasil e o 2 de Julho na Bahia','o'],['Revolta dos Malês (1835)','o'],['Sabinada (1837-1838)','o'],['Guerra de Canudos (1896-1897)','o'],
+  ['Império e Regências','m'],['República Velha e coronelismo','m'],['Era Vargas e Estado Novo','m'],['Ditadura militar e redemocratização','m'],['Cultura afro-brasileira e indígena (Leis 10.639/03 e 11.645/08)','m'],['Mineração e bandeirantes','p'],['Revolução Francesa e Revolução Industrial','p']]},
+ {id:'geo',nome:'Geografia (Brasil e Bahia)',curto:'Geografia',cor:'#4ade80',t:[
+  ['Território baiano: localização e características físicas','o'],['Territórios de identidade e regiões econômicas da Bahia','o'],['Clima, relevo, hidrografia e vegetação da Bahia','o'],
+  ['Economia da Bahia: agropecuária, indústria e turismo','m'],['População: demografia, urbanização e migrações','m'],['Regiões brasileiras e o IBGE','m'],['Biomas brasileiros e questão ambiental','m'],
+  ['Globalização e geopolítica','p'],['Cartografia, coordenadas e fusos horários','p'],['Fontes de energia','p']]},
+ {id:'dcon',nome:'Direito Constitucional',curto:'Dir. Constitucional',cor:'#60a5fa',t:[
+  ['Princípios fundamentais (arts. 1º a 4º)','o'],['Direitos e garantias individuais e coletivos (art. 5º)','o'],['Administração Pública (art. 37)','o'],['Segurança pública (art. 144)','o'],
+  ['Direitos sociais (arts. 6º a 11)','m'],['Nacionalidade e direitos políticos','m'],['Organização político-administrativa do Estado','m'],['Poderes Legislativo, Executivo e Judiciário','m'],
+  ['Defesa do Estado e das instituições democráticas','m'],['Constituição do Estado da Bahia: segurança pública','m'],['Poder constituinte e aplicabilidade das normas','p'],['Controle de constitucionalidade','p']]},
+ {id:'dh',nome:'Direitos Humanos',curto:'Dir. Humanos',cor:'#f472b6',t:[
+  ['Teoria geral e dimensões dos direitos humanos','o'],['Declaração Universal dos Direitos Humanos (1948)','o'],['Convenção Americana (Pacto de San José da Costa Rica)','o'],
+  ['Direitos humanos e atividade policial: uso da força e Código de Conduta','o'],['Lei de Tortura (Lei 9.455/97)','o'],['Abuso de autoridade (Lei 13.869/19)','o'],
+  ['Estatuto da Criança e do Adolescente (ECA)','m'],['Estatuto da Igualdade Racial (Lei 12.288/10)','m'],['Lei Maria da Penha (Lei 11.340/06)','m'],['Estatuto do Idoso e da Pessoa com Deficiência','p'],['Sistema Interamericano e Tribunal Penal Internacional','p']]},
+ {id:'dadm',nome:'Direito Administrativo',curto:'Dir. Administrativo',cor:'#818cf8',t:[
+  ['Princípios da Administração Pública','o'],['Poderes administrativos','o'],['Atos administrativos: requisitos e atributos','o'],['Estatuto dos Policiais Militares da Bahia (Lei 7.990/01)','o'],
+  ['Organização: administração direta e indireta','m'],['Agentes públicos e regime jurídico','m'],['Responsabilidade civil do Estado','m'],['Improbidade administrativa (Lei 8.429/92)','m'],
+  ['Licitações e contratos (Lei 14.133/21)','p'],['Serviços públicos e concessões','p'],['Controle da Administração','p'],['Bens públicos','p']]},
+ {id:'dpen',nome:'Direito Penal',curto:'Dir. Penal',cor:'#f87171',t:[
+  ['Princípios do Direito Penal','o'],['Teoria do crime: fato típico, ilicitude e culpabilidade','o'],['Excludentes de ilicitude: legítima defesa e estado de necessidade','o'],
+  ['Crimes contra a pessoa','o'],['Crimes contra o patrimônio','o'],['Crimes contra a Administração Pública','o'],
+  ['Aplicação da lei penal no tempo e no espaço','m'],['Concurso de pessoas','m'],['Crimes contra a dignidade sexual','m'],['Penas: espécies, aplicação e execução','m'],['Lei de Drogas (Lei 11.343/06)','m'],['Estatuto do Desarmamento (Lei 10.826/03)','m'],
+  ['Prescrição','p'],['Extinção da punibilidade','p']]},
+ {id:'dpp',nome:'Direito Processual Penal',curto:'Dir. Proc. Penal',cor:'#fb7185',t:[
+  ['Inquérito policial','o'],['Ação penal pública e privada','o'],['Prisão em flagrante','o'],['Prisões cautelares: preventiva e temporária','m'],['Provas','m'],['Busca e apreensão','m'],
+  ['Juizados Especiais Criminais e termo circunstanciado (Lei 9.099/95)','m'],['Audiência de custódia','m'],['Competência','p'],['Sujeitos processuais','p'],['Nulidades','p'],['Procedimentos: comum e júri','p']]},
+ {id:'dpm',nome:'Direito Penal Militar',curto:'Dir. Penal Militar',cor:'#2dd4bf',t:[
+  ['Crime militar em tempo de paz','o'],['Crimes contra a autoridade ou disciplina militar','o'],['Deserção e abandono de posto','o'],
+  ['Aplicação da lei penal militar','m'],['Conceito de militar e equiparação','m'],['Excludentes e culpabilidade','m'],['Penas principais e acessórias','m'],['Crimes contra o patrimônio militar','m'],
+  ['Crimes de violência contra inferior','p'],['Insubmissão','p'],['Extinção da punibilidade e prescrição','p']]},
+ {id:'dppm',nome:'Direito Processual Penal Militar',curto:'Dir. Proc. Penal Militar',cor:'#14b8a6',t:[
+  ['Polícia judiciária militar e inquérito policial militar (IPM)','o'],['Justiça Militar estadual: competência','o'],['Ação penal militar','m'],['Prisão em flagrante e menagem','m'],['Prisão preventiva','m'],
+  ['Foro militar e Conselhos de Justiça','p'],['Processo ordinário','p'],['Processo especial de deserção','p'],['Provas: testemunhas e perícias','p'],['Recursos','p']]},
+];
+const SUBJ={rev:{curto:'Revisão (flashcards)',cor:'#c4b5fd'},sim:{curto:'Questões / simulado',cor:'#fcd34d'}};
+DISC.forEach(d=>SUBJ[d.id]={curto:d.curto,cor:d.cor});
+const SUBJ_IDS=[...DISC.map(d=>d.id),'rev','sim'];
+const TOPICS=DISC.flatMap(d=>d.t.map((t,i)=>({id:d.id+'_'+i,d:d.id,txt:t[0],p:t[1]})));
+const W={o:3,m:2,p:1};
+const PRIO={o:'Alta Prioridade / Ouro',m:'Média',p:'Deixar p/ Pós-Edital'};
+const TOTAL_XP=TOPICS.reduce((a,t)=>a+W[t.p]*10,0);
+const RANKS=[{n:'Recruta',t:0,ic:'Shield'},{n:'Aluno Soldado',t:.08,ic:'ChevronUp'},{n:'Soldado',t:.22,ic:'ChevronsUp'},{n:'Cabo',t:.40,ic:'Award'},{n:'Sargento',t:.62,ic:'Medal'},{n:'Oficial',t:.85,ic:'Star'}];
+
+/* ============ dados: cronograma padrão (efeito sanduíche) ============ */
+const mk=(subject,foco,start,note='')=>({id:uid(),subject,foco,start,note});
+const defaultSchedule=()=>({
+ 1:[mk('lp','Interpretação de texto e crase (por questões)','19:00'),mk('mat','Porcentagem: macete dos 10%','19:50'),mk('his','Conjuração Baiana e 2 de Julho (questões)','20:40')],
+ 2:[mk('dcon','Art. 5º e direitos fundamentais (questões)','19:00'),mk('mat','Regra de três simples','19:50'),mk('geo','Território e clima da Bahia (questões)','20:40')],
+ 3:[mk('inf','Segurança da informação e internet','19:00'),mk('mat','Conjuntos com diagramas','19:50'),mk('dh','DUDH, tortura e abuso de autoridade (questões)','20:40')],
+ 4:[mk('dadm','Princípios, poderes e Estatuto PMBA (Lei 7.990/01)','19:00'),mk('mat','Média, mediana e moda','19:50'),mk('his','Malês, Sabinada e Canudos (questões)','20:40')],
+ 5:[mk('dpen','Teoria do crime e crimes contra a Administração Pública','19:00'),mk('mat','Sequências lógicas','19:50'),mk('dpp','Inquérito, flagrante e prisões (questões)','20:40')],
+ 6:[mk('ing','Leitura de textos e vocabulário','19:00'),mk('mat','Revisão geral com questões mistas','19:50'),mk('dpm','Crime militar, deserção e disciplina (questões)','20:40')],
+});
+
+/* ============ dados: flashcards iniciais ============ */
+const C=(s,q,a)=>({id:uid(),s,q,a,lv:null,last:0,seen:0,errs:0});
+const defaultCards=()=>[
+ C('lp','Qual a diferença entre Ofício e Memorando?','OFÍCIO: comunicação oficial EXTERNA (entre órgãos diferentes ou com particulares).\nMEMORANDO: comunicação INTERNA, entre unidades do mesmo órgão.\nFecho: "Atenciosamente" (mesma hierarquia ou inferior) e "Respeitosamente" (autoridade superior).'),
+ C('lp','Como saber se há crase?','Crase = preposição A + artigo A(S). Teste: troque a palavra feminina por uma masculina. Se aparecer "AO", há crase.\nEx.: "Fui à escola" (Fui ao colégio). Nunca há crase antes de verbo, pronome pessoal ou palavra masculina.'),
+ C('his','Revolta dos Malês: o que foi?','Janeiro de 1835, Salvador. Africanos muçulmanos (nagôs e haussás), escravizados e libertos, tentaram uma insurreição contra a escravidão e a imposição religiosa. Foi derrotada, mas gerou repressão e leis mais duras contra africanos.'),
+ C('his','Guerra de Canudos: pontos-chave','1896-1897, sertão da Bahia. Comunidade de Belo Monte liderada por Antônio Conselheiro. A jovem República enviou 4 expedições militares; o arraial foi destruído em outubro de 1897. Relato clássico: "Os Sertões", de Euclides da Cunha.'),
+ C('his','Conjuração Baiana (1798): ideais e punidos','Também chamada Revolta dos Alfaiates. Ideais iluminista: república, igualdade, fim da escravidão e liberdade de comércio. Reprimida; os mais pobres foram punidos com enforcamento (Lucas Dantas, Luiz Gonzaga das Virgens, João de Deus e Manoel Faustino).'),
+ C('his','O que se comemora no 2 de Julho?','A independência da Bahia (1823): vitória contra as tropas portuguesas, que resistiam ao Brasil independente. Símbolos: Maria Quitéria, Maria Felipa, Joana Angélica (morta em 1822) e o Caboclo.'),
+ C('dadm','Estatuto dos Policiais Militares da Bahia (Lei 7.990/01)','Regula a situação, obrigações, deveres, direitos e prerrogativas dos policiais militares do Estado da Bahia. Seus pilares são a hierarquia e a disciplina.'),
+ C('dcon','Art. 5º, caput da CF: o que garante?','Todos são iguais perante a lei, sem distinção de qualquer natureza. Garante a brasileiros e estrangeiros residentes a inviolabilidade do direito à VIDA, LIBERDADE, IGUALDADE, SEGURANÇA e PROPRIEDADE.'),
+ C('dcon','Art. 5º, LXI: quando alguém pode ser preso?','Somente em FLAGRANTE delito ou por ORDEM ESCRITA e FUNDAMENTADA de autoridade judiciária competente.\nExceções: transgressão militar e crime propriamente militar, definidos em lei.'),
+ C('dcon','Art. 144 CF: quais são os órgãos da segurança pública?','Polícia Federal; Polícia Rodoviária Federal; Polícia Ferroviária Federal; Polícias Civis; Polícias Militares e Corpos de Bombeiros Militares; Polícias Penais (federal, estaduais e distrital). À PM cabem o policiamento ostensivo e a preservação da ordem pública.'),
+ C('mat','Macete da Porcentagem','x% de Y = (x ÷ 100) × Y.\nAumento de 20% → multiplique por 1,20. Desconto de 20% → multiplique por 0,80.\n10% é só andar a vírgula uma casa. 5% é a metade de 10%.'),
+ C('mat','Regra de três: direta ou inversa?','Pergunta-teste: "se uma grandeza AUMENTA, a outra também AUMENTA?"\nSIM → direta: multiplique em cruz.\nNÃO → inversa: inverta uma das colunas e depois multiplique em cruz.'),
+ C('mat','Média, mediana e moda','MÉDIA = soma ÷ quantidade.\nMEDIANA = valor central com os dados em ordem (se forem pares, média dos dois centrais).\nMODA = valor que mais se repete.'),
+ C('dpen','Legítima defesa (art. 25 do CP): requisitos','Agressão INJUSTA, ATUAL ou IMINENTE, a direito próprio ou de terceiro, repelida com os meios NECESSÁRIOS, usados com MODERAÇÃO. Se houver excesso, responde pelo excesso.'),
+ C('inf','Phishing × Ransomware','PHISHING: golpe com mensagens ou sites falsos para enganar a vítima e roubar dados.\nRANSOMWARE: malware que sequestra (criptografa) arquivos e exige resgate. Defesa: backup frequente e desconfiar de links.'),
+];
+
+/* ============ dados: jogos ============ */
+const QUIZ=[
+ ['Segundo a CF/88, a tortura é crime inafiançável e insuscetível de graça ou anistia.',true,'Art. 5º, XLIII: tortura, tráfico de drogas, terrorismo e crimes hediondos.'],
+ ['A CF/88 admite pena de morte em tempo de paz.',false,'Só é admitida em caso de guerra declarada (art. 5º, XLVII, "a").'],
+ ['Ninguém será preso senão em flagrante ou por ordem escrita e fundamentada de autoridade judiciária, salvo transgressão militar ou crime propriamente militar.',true,'Art. 5º, LXI.'],
+ ['Os princípios expressos no art. 37 da CF são legalidade, impessoalidade, moralidade, publicidade e eficiência.',true,'É o famoso LIMPE.'],
+ ['A Polícia Militar é a responsável pela apuração das infrações penais comuns, exceto as militares.',false,'Essa é função da Polícia Civil. À PM cabe o policiamento ostensivo e a preservação da ordem pública.'],
+ ['Pelo princípio da legalidade penal, não há crime sem lei anterior que o defina.',true,'Art. 1º do CP e art. 5º, XXXIX, da CF.'],
+ ['A legítima defesa exige agressão injusta que seja apenas futura.',false,'A agressão deve ser ATUAL ou IMINENTE (art. 25 do CP).'],
+ ['O peculato é crime contra a Administração Pública.',true,'Art. 312 do CP.'],
+ ['Os direitos humanos de primeira dimensão são os direitos sociais e econômicos.',false,'A primeira dimensão trata de liberdades civis e políticas. Os sociais e econômicos são da segunda.'],
+ ['A Declaração Universal dos Direitos Humanos foi proclamada pela ONU em 1948.',true,'10 de dezembro de 1948.'],
+ ['Presunção de legitimidade, imperatividade e autoexecutoriedade são atributos do ato administrativo.',true,'Também a tipicidade, segundo parte da doutrina.'],
+ ['A Justiça Militar estadual julga os crimes militares praticados por civis.',false,'Ela julga os militares dos Estados nos crimes militares definidos em lei (CF, art. 125, §4º).'],
+ ['A Revolta dos Malês ocorreu em Salvador, em 1835.',true,'Revolta de africanos muçulmanos escravizados e libertos.'],
+ ['Canudos se desenvolveu no sertão baiano sob a liderança de Antônio Conselheiro.',true,'Arraial de Belo Monte, 1896-1897.'],
+ ['A Conjuração Baiana (1798) defendia a manutenção da monarquia absolutista.',false,'Defendia república, igualdade e fim da escravidão.'],
+ ['A independência da Bahia é celebrada em 2 de Julho.',true,'Marca a vitória sobre as tropas portuguesas em 1823.'],
+ ['Salvador foi a primeira capital do Brasil, a partir de 1549.',true,'Sede do Governo-Geral, com Tomé de Sousa.'],
+ ['A Sabinada (1837-1838) foi um movimento republicano ocorrido na Bahia.',true,'Liderada por Francisco Sabino, foi duramente reprimida.'],
+ ['Em "Vou à Bahia", o emprego da crase está correto.',true,'Bahia admite artigo: "venho da Bahia". Logo, a + a = à.'],
+ ['Em "Haviam muitos candidatos", a concordância está correta.',false,'Haver no sentido de existir é impessoal: "Havia muitos candidatos".'],
+ ['MAL é antônimo de BEM, e MAU é antônimo de BOM.',true,'Teste: troque por bem/bom.'],
+ ['Em "Os policiais, chegaram cedo.", a vírgula está correta.',false,'Não se separa sujeito de verbo por vírgula.'],
+ ['Phishing é a fraude que usa mensagens ou sites falsos para obter dados do usuário.',true,'Engenharia social por e-mail, SMS ou site clonado.'],
+ ['O firewall tem como função impedir a cópia de arquivos para pendrives.',false,'O firewall filtra o tráfego de rede, permitindo ou bloqueando conexões.'],
+ ['No Excel, =MÉDIA(A1:A5) calcula a média aritmética do intervalo.',true,'Soma os valores e divide pela quantidade deles.'],
+ ['O protocolo HTTPS transmite dados com criptografia.',true,'HTTP + camada de segurança (TLS).'],
+ ['Um vírus se propaga sozinho pela rede, sem precisar de arquivo hospedeiro.',false,'Isso descreve um worm. O vírus precisa de um hospedeiro.'],
+ ['Ransomware é o malware que sequestra dados e exige resgate.',true,'Normalmente criptografa os arquivos da vítima.'],
+];
+const MATCH=[
+ {t:'Crimes contra a Administração Pública',p:[['Peculato','Apropriar-se de bem ou dinheiro público de que tem posse em razão do cargo'],['Corrupção passiva','Solicitar ou receber vantagem indevida em razão da função'],['Concussão','Exigir vantagem indevida em razão da função'],['Prevaricação','Retardar ou deixar de praticar ato de ofício para satisfazer interesse pessoal'],['Advocacia administrativa','Patrocinar interesse privado perante a Administração, valendo-se da condição de servidor']]},
+ {t:'Bahia: datas e fatos',p:[['1798','Conjuração Baiana (Revolta dos Alfaiates)'],['1823','Independência da Bahia (2 de Julho)'],['1835','Revolta dos Malês'],['1837','Sabinada'],['1896','Guerra de Canudos']]},
+ {t:'Princípios da Administração Pública',p:[['Legalidade','Só se faz o que a lei permite'],['Impessoalidade','Sem favorecimento: a finalidade é o interesse público'],['Moralidade','Ética, honestidade e boa-fé'],['Publicidade','Transparência dos atos administrativos'],['Eficiência','Bons resultados com qualidade e economia']]},
+ {t:'Redação oficial',p:[['Ofício','Comunicação externa entre órgãos ou com particulares'],['Memorando','Comunicação interna entre unidades do mesmo órgão'],['Requerimento','Pedido formal dirigido a uma autoridade'],['Ata','Registro escrito do que ocorreu em uma reunião'],['Atestado','Declara um fato ou situação de que a autoridade tem conhecimento']]},
+ {t:'Poderes administrativos',p:[['Poder hierárquico','Ordenar, fiscalizar e escalonar funções entre superiores e subordinados'],['Poder disciplinar','Punir infrações funcionais de servidores'],['Poder regulamentar','Editar normas para fiel execução da lei'],['Poder de polícia','Limitar direitos individuais em favor do interesse coletivo']]},
+];
+
+/* ============ geradores de matemática ============ */
+const PB={5:20,10:10,15:20,20:5,25:4,30:10,40:5,50:2,60:5,75:4};
+const shortcut=(p,N)=>p===50?`50% é a metade: ${fmt(N/2)}.`:p===25?`25% é um quarto: ${fmt(N/4)}.`:p%10===0?`10% de ${N} = ${fmt(N/10)}. Multiplique por ${p/10}.`:`10% de ${N} = ${fmt(N/10)}; 5% é a metade disso = ${fmt(N/20)}.`;
+function genPct(lv){
+  const t=ri(1,3);
+  if(t===1){
+    const p=pick(lv<3?[10,20,25,50]:[5,10,15,20,25,30,40,50,60,75]),N=PB[p]*ri(1,lv<3?5:12);
+    const ans=N*p/100;
+    return {tipo:'Porcentagem',texto:`Quanto é ${p}% de ${N}?`,ans,hint:{kind:'pct',p,total:N},steps:[`Porcentagem é "por cem": ${p}% = ${p}/100.`,`Conta: ${N} × ${p} ÷ 100 = ${fmt(ans)}.`,`Atalho: ${shortcut(p,N)}`]};
+  }
+  if(t===2){
+    const p=pick(lv<3?[10,20,25,50]:[5,10,15,20,25,30,40]),N=PB[p]*ri(1,lv<3?5:12),up=Math.random()<.5;
+    const f=up?1+p/100:1-p/100,ans=Math.round(N*f*100)/100;
+    return {tipo:'Porcentagem',texto:`Uma mochila custa R$ ${N}. Com ${up?'aumento':'desconto'} de ${p}%, quanto ela passa a custar? (em R$)`,ans,hint:{kind:'pct',p,total:N},steps:[`${up?'Aumento':'Desconto'} de ${p}% → fator = ${up?'1 +':'1 −'} ${fmt(p/100)} = ${fmt(f)}.`,`${N} × ${fmt(f)} = ${fmt(ans)}.`,`Outro caminho: ${p}% de ${N} = ${fmt(N*p/100)}; ${up?'some':'subtraia'} do valor original.`]};
+  }
+  const p=pick([10,20,25,40,50,60,75]),M=PB[p]*ri(1,lv<3?4:10)*(lv<2?1:2),N=p*M/100;
+  return {tipo:'Porcentagem',texto:`Em uma turma com ${M} alunos, ${N} foram aprovados. Qual a porcentagem de aprovados? (só o número)`,ans:p,hint:{kind:'pct',p,total:M},steps:[`Parte ÷ todo: ${N} ÷ ${M} = ${fmt(N/M)}.`,`Multiplique por 100: ${fmt(N/M)} × 100 = ${p}%.`]};
+}
+function genR3(lv){
+  if(Math.random()<.6){
+    const a=pick([2,3,4,5]),p=ri(3,12),m=pick([2,3,4,5,6]),c=a*m,b=a*p,ans=c*p;
+    const ctx=pick([['viaturas','litros de combustível'],['cadernos','reais'],['kg de arroz','reais']]);
+    const [u1,u2]=ctx;
+    const txt=ctx[0]==='viaturas'?`${a} viaturas gastam ${b} litros de combustível em um plantão. Quantos litros gastam ${c} viaturas, no mesmo ritmo?`:`${a} ${u1} custam R$ ${b}. Quanto custam ${c} ${u1}?`;
+    return {tipo:'Regra de 3',texto:txt,ans,hint:{kind:'r3',a,b,c,dir:true,u1:ctx[0]==='viaturas'?'viaturas':u1,u2:ctx[0]==='viaturas'?'litros':'R$'},steps:[`Mais ${ctx[0]==='viaturas'?'viaturas':u1} → mais ${ctx[0]==='viaturas'?'litros':'reais'}: grandezas DIRETAS.`,`Multiplique em cruz: ${a} · x = ${b} · ${c}.`,`x = ${b*c} ÷ ${a} = ${ans}.`]};
+  }
+  const x=pick([2,3,4,6]),d=pick([6,8,9,10,12]),tot=x*d,divs=[];
+  for(let y=1;y<=24;y++) if(tot%y===0&&y!==x) divs.push(y);
+  const y=pick(divs),ans=tot/y;
+  return {tipo:'Regra de 3',texto:`${x} policiais fazem uma ronda em ${d} dias. Em quantos dias ${y} policiais fariam a mesma ronda, no mesmo ritmo?`,ans,hint:{kind:'r3',a:x,b:d,c:y,dir:false,u1:'policiais',u2:'dias'},steps:[`Mais policiais → MENOS dias: grandezas INVERSAS.`,`Na inversa, o produto é constante: ${x} × ${d} = ${tot}.`,`${y} × x = ${tot} → x = ${tot} ÷ ${y} = ${ans} dias.`]};
+}
+function genStat(lv){
+  const t=ri(1,3),n=t===3?ri(3,4)*2-1:(t===2?ri(2,3)*2:ri(4,5));
+  if(t===1){
+    const nums=Array.from({length:n-1},()=>ri(2,18)),s=nums.reduce((a,b)=>a+b,0);
+    let last=((n-s%n)%n)+n*ri(0,1);if(last<1)last+=n;nums.push(last);
+    const all=shuffle(nums),tot=all.reduce((a,b)=>a+b,0);
+    return {tipo:'Média',texto:`Qual é a média aritmética de ${all.join(', ')}?`,ans:tot/n,hint:{kind:'avg',nums:all},steps:[`Some tudo: ${all.join(' + ')} = ${tot}.`,`Divida pela quantidade (${n}): ${tot} ÷ ${n} = ${fmt(tot/n)}.`]};
+  }
+  if(t===2){
+    const base=Array.from({length:n},()=>ri(2,20));let s=[...base].sort((a,b)=>a-b);
+    const h=n/2;if((s[h-1]+s[h])%2){s[h]+=1;}
+    const all=shuffle(s),srt=[...all].sort((a,b)=>a-b),ans=(srt[h-1]+srt[h])/2;
+    return {tipo:'Mediana',texto:`Qual é a mediana de ${all.join(', ')}?`,ans,hint:{kind:'avg',nums:all,median:true},steps:[`Coloque em ordem: ${srt.join(', ')}.`,`São ${n} números (quantidade par): pegue os dois do meio, ${srt[h-1]} e ${srt[h]}.`,`Média deles: (${srt[h-1]} + ${srt[h]}) ÷ 2 = ${ans}.`]};
+  }
+  const vals=[...new Set(Array.from({length:n+4},()=>ri(1,15)))].slice(0,n-1);
+  while(vals.length<n-1) vals.push(ri(16,30));
+  const mode=vals[0],all=shuffle([...vals,mode,mode].slice(0,n+1));
+  const cnt={};all.forEach(v=>cnt[v]=(cnt[v]||0)+1);
+  const best=Object.entries(cnt).sort((a,b)=>b[1]-a[1]);
+  if(best[1]&&best[1][1]===best[0][1]){all.push(+best[0][0]);cnt[best[0][0]]++;}
+  const m=+Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0][0];
+  return {tipo:'Moda',texto:`Qual é a moda de ${all.join(', ')}?`,ans:m,hint:{kind:'avg',nums:all,mode:m},steps:[`Moda é o valor que MAIS se repete.`,`O número ${m} aparece ${cnt[m]} vezes, mais que os outros.`]};
+}
+function genSeq(lv){
+  const t=ri(1,6);
+  let terms=[],ans,labels,rule;
+  if(t===1){const a=ri(1,20),r=ri(2,9);terms=[0,1,2,3,4].map(i=>a+i*r);ans=a+5*r;labels=Array(5).fill('+'+r);rule=`Soma ${r} a cada passo.`;}
+  else if(t===2){const a=ri(1,4),q=pick([2,3]);terms=[0,1,2,3,4].map(i=>a*q**i);ans=a*q**5;labels=Array(5).fill('×'+q);rule=`Multiplica por ${q} a cada passo.`;}
+  else if(t===3){const a=ri(1,10);terms=[a,a+1,a+3,a+6,a+10];ans=a+15;labels=['+1','+2','+3','+4','+5'];rule='A diferença cresce de 1 em 1: +1, +2, +3, +4, +5.';}
+  else if(t===4){const x=ri(1,4),y=ri(2,6),s=[x,y];for(let i=2;i<6;i++)s.push(s[i-1]+s[i-2]);terms=s.slice(0,5);ans=s[5];labels=['','soma dos 2 anteriores','soma dos 2 anteriores','soma dos 2 anteriores','soma dos 2 anteriores'].map((l,i)=>i<1?'→':'Σ');rule=`Cada termo é a soma dos dois anteriores: ${terms[3]} + ${terms[4]} = ${ans}.`;}
+  else if(t===5){const a=ri(1,10),b=ri(30,50),r=ri(2,5),s=ri(2,6);terms=[a,b,a+r,b+s,a+2*r];ans=b+2*s;labels=['↗','↘','↗','↘','↗'];rule=`Duas sequências misturadas: nas posições ímpares soma ${r} (${a}, ${a+r}, ${a+2*r}...); nas pares soma ${s} (${b}, ${b+s}, ${b+2*s}...).`;}
+  else {const k=ri(1,5);terms=[0,1,2,3,4].map(i=>(k+i)**2);ans=(k+5)**2;labels=terms.map((_,i)=>'+'+(2*(k+i)+1));rule=`São quadrados perfeitos: ${k}², ${k+1}², ${k+2}²... O próximo é ${k+5}² = ${ans}.`;}
+  return {tipo:'Sequência',texto:`Qual número vem depois? ${terms.join(', ')}, ?`,ans,hint:{kind:'seq',terms,labels},steps:[rule,`Resposta: ${ans}.`]};
+}
+const MATH_TOPICS={all:'Todos',pct:'Porcentagem',r3:'Regra de 3',stat:'Média e Mediana',seq:'Sequências'};
+function genMath(topic,lv){const g={pct:genPct,r3:genR3,stat:genStat,seq:genSeq};const k=topic==='all'?pick(Object.keys(g)):topic;return g[k](lv);}
+
+/* ============ estado e persistência ============ */
+const KEY='pmba_painel_v1';
+const defaults=()=>({v:1,tab:'home',planView:'week',done:{},schedule:defaultSchedule(),mission:{},studied:{},minutes:{},tasks:{},goals:{},cards:defaultCards(),xp:0,sound:true,alarm:15,bannerOff:'',best:{quiz:0,match:0,math:0},rank:0});
+function load(){try{const r=localStorage.getItem(KEY);if(r)return {...defaults(),...JSON.parse(r)};}catch(e){}return defaults();}
+const wkey=iso=>iso;
+function calcStreak(studied){
+  let d=new Date();if(!studied[isoOf(d)])d.setDate(d.getDate()-1);
+  let n=0;while(studied[isoOf(d)]){n++;d.setDate(d.getDate()-1);}return n;
+}
+function useDerived(S){
+  return useMemo(()=>{
+    let txp=0,dn=0;TOPICS.forEach(t=>{if(S.done[t.id]){txp+=W[t.p]*10;dn++;}});
+    const xp=txp+(S.xp||0);let ri_=0;RANKS.forEach((r,i)=>{if(xp>=r.t*TOTAL_XP)ri_=i;});
+    const nxt=RANKS[ri_+1];
+    const lo=RANKS[ri_].t*TOTAL_XP,hi=nxt?nxt.t*TOTAL_XP:lo;
+    return {xp,txp,dn,rankIdx:ri_,lo,hi,pctRank:nxt?Math.min(100,Math.round((xp-lo)/(hi-lo)*100)):100,pct:Math.round(dn/TOPICS.length*100)};
+  },[S.done,S.xp]);
+}
+
+/* ============ arquivos: salvar / ICS ============ */
+async function saveFile(name,data,mime){
+  try{
+    const d=window.claude&&window.claude.use?await window.claude.use('downloads'):null;
+    if(d){await d.save({filename:name,data});return 'saved';}
+  }catch(e){return (e&&e.code)||'error';}
+  try{
+    const b=new Blob([data],{type:mime||'text/plain'}),u=URL.createObjectURL(b),a=document.createElement('a');
+    a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500);return 'saved';
+  }catch(e){return 'error';}
+}
+const copyText=async t=>{try{await navigator.clipboard.writeText(t);return true;}catch(e){return false;}};
+const icsEsc=s=>String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+const fold=l=>{const out=[];let s=l;while(s.length>73){out.push(s.slice(0,73));s=' '+s.slice(73);}out.push(s);return out.join('\r\n');};
+const dtl=(iso,hm)=>iso.replace(/-/g,'')+'T'+hm.replace(':','')+'00';
+const BYDAY=['SU','MO','TU','WE','TH','FR','SA'];
+function dayEvent(S,iso,wd,recur){
+  const bl=(S.schedule[wd]||[]).slice().sort((a,b)=>a.start.localeCompare(b.start));
+  if(!bl.length) return null;
+  const st=bl[0].start,en=addMin(bl[bl.length-1].start,45);
+  const nomes=bl.map(b=>SUBJ[b.subject]?.curto||b.subject);
+  const desc=bl.map(b=>`${b.start}-${addMin(b.start,45)} ${SUBJ[b.subject]?.curto}: ${b.foco}`).join('\n')+'\n\nPomodoro: 40 min de foco + 10 min de pausa.';
+  const sum=`PMBA • ${DIAS_C[wd]}: ${nomes.join(' + ')}`;
+  return {iso,st,en,sum,desc,wd,recur};
+}
+function buildEvents(S,mode){
+  const now=new Date();const evs=[];
+  if(mode==='hoje'){
+    for(let i=0;i<8;i++){const d=new Date(now);d.setDate(d.getDate()+i);const e=dayEvent(S,isoOf(d),d.getDay(),false);if(e){evs.push(e);break;}}
+  }else{
+    for(let wd=1;wd<=6;wd++){for(let i=0;i<7;i++){const d=new Date(now);d.setDate(d.getDate()+i);if(d.getDay()===wd){const e=dayEvent(S,isoOf(d),wd,true);if(e)evs.push(e);break;}}}
+  }
+  return evs;
+}
+function buildICS(S,mode,alarm){
+  const evs=buildEvents(S,mode);
+  const n=new Date(),stamp=n.getUTCFullYear()+pad(n.getUTCMonth()+1)+pad(n.getUTCDate())+'T'+pad(n.getUTCHours())+pad(n.getUTCMinutes())+pad(n.getUTCSeconds())+'Z';
+  const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Operacao PMBA//Painel Tatico//PT-BR','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:Operação PMBA'];
+  evs.forEach(e=>{
+    L.push('BEGIN:VEVENT','UID:'+uid()+uid()+'@pmba.painel','DTSTAMP:'+stamp,'DTSTART:'+dtl(e.iso,e.st),'DTEND:'+dtl(e.iso,e.en),'SUMMARY:'+icsEsc(e.sum),'DESCRIPTION:'+icsEsc(e.desc));
+    if(e.recur) L.push('RRULE:FREQ=WEEKLY;BYDAY='+BYDAY[e.wd]);
+    L.push('BEGIN:VALARM','TRIGGER:-PT'+alarm+'M','ACTION:DISPLAY','DESCRIPTION:'+icsEsc('Hora de estudar: '+e.sum),'END:VALARM','END:VEVENT');
+  });
+  L.push('END:VCALENDAR');
+  return {text:L.map(fold).join('\r\n')+'\r\n',evs};
+}
+const gcalLink=e=>e?'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(e.sum)+'&details='+encodeURIComponent(e.desc)+'&dates='+dtl(e.iso,e.st)+'/'+dtl(e.iso,e.en)+(e.recur?'&recur='+encodeURIComponent('RRULE:FREQ=WEEKLY;BYDAY='+BYDAY[e.wd]):''):'#';
+
+/* ============ componentes pequenos ============ */
+const Bar=({v,color='var(--ok)',h})=><div className="bar" style={h?{height:h}:null}><i style={{width:Math.max(0,Math.min(100,v))+'%',background:color}}/></div>;
+const Dot=({c})=><span className="inline-block rounded-full flex-none" style={{width:10,height:10,background:c}}/>;
+function Modal({title,onClose,children,wide}){
+  useEffect(()=>{const f=e=>e.key==='Escape'&&onClose();window.addEventListener('keydown',f);return()=>window.removeEventListener('keydown',f);},[]);
+  return <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4" style={{background:'rgba(3,8,18,.78)',paddingTop:'env(safe-area-inset-top,0px)'}} onMouseDown={e=>e.target===e.currentTarget&&onClose()}>
+    <div className={'card rise w-full max-h-[92vh] overflow-y-auto '+(wide?'sm:max-w-2xl':'sm:max-w-md')} style={{borderRadius:'18px 18px 0 0',paddingBottom:'env(safe-area-inset-bottom,0px)'}}>
+      <div className="flex items-center justify-between gap-3 p-4 border-b" style={{borderColor:'var(--line)'}}>
+        <h3 className="font-display font-bold text-lg min-w-0 break-words">{title}</h3>
+        <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Fechar"><Ic n="X" size={16}/></button>
+      </div>
+      <div className="p-4">{children}</div>
+    </div>
+  </div>;
+}
+
+/* ============ MODAL: Agenda (.ics) ============ */
+function IcsModal({S,setS,onClose,toast}){
+  const [mode,setMode]=useState('hoje');
+  const alarm=S.alarm||15;
+  const {text,evs}=useMemo(()=>buildICS(S,mode,alarm),[S.schedule,mode,alarm]);
+  const [msg,setMsg]=useState('');
+  const save=async()=>{
+    let r=await saveFile('pmba-lembrete.ics',text,'text/calendar');
+    if(r==='rejected_extension'){r=await saveFile('pmba-lembrete.ics.txt',text,'text/plain');if(r==='saved')setMsg('Salvo como .txt. Troque o nome para pmba-lembrete.ics antes de importar na agenda.');else if(r!=='declined')setMsg('Não foi possível salvar aqui. Use "Copiar texto" e cole em um arquivo chamado pmba-lembrete.ics.');return;}
+    if(r==='saved')setMsg('Arquivo enviado para download.');else if(r==='declined')setMsg('');else setMsg('Não foi possível salvar aqui. Use "Copiar texto" e cole em um arquivo chamado pmba-lembrete.ics.');
+  };
+  const copy=async()=>{setMsg((await copyText(text))?'Texto copiado. Cole em um arquivo chamado pmba-lembrete.ics.':'Cópia bloqueada. Selecione o texto abaixo e copie manualmente.');};
+  return <Modal title="Lembrete na Agenda (.ics)" onClose={onClose} wide>
+    <p className="text-sm" style={{color:'var(--muted)'}}>O arquivo .ics funciona no Google Agenda e no Apple Calendar e já inclui o alarme.</p>
+    <div className="flex flex-wrap gap-2 mt-3">
+      <button className={'chip '+(mode==='hoje'?'on':'')} onClick={()=>setMode('hoje')}>Só o próximo dia de estudo</button>
+      <button className={'chip '+(mode==='semana'?'on':'')} onClick={()=>setMode('semana')}>Semana toda (repete)</button>
+    </div>
+    <label className="label block mt-4 mb-1" htmlFor="alarm">Alarme antes do início</label>
+    <select id="alarm" className="field" value={alarm} onChange={e=>setS(s=>({...s,alarm:+e.target.value}))}>{[5,10,15,30,60].map(m=><option key={m} value={m}>{m} minutos antes</option>)}</select>
+    <div className="mt-3 text-sm">{evs.map((e,i)=><div key={i} className="py-1 break-words"><b className="font-display">{e.sum}</b> <span className="font-mono text-xs" style={{color:'var(--muted)'}}>{e.st}–{e.en}</span></div>)}</div>
+    <div className="flex flex-wrap gap-2 mt-3">
+      <button className="btn btn-gold" onClick={save}><Ic n="Download" size={16}/>Baixar .ics</button>
+      <button className="btn" onClick={copy}><Ic n="Copy" size={16}/>Copiar texto</button>
+      {mode==='hoje'&&evs[0]&&<a className="btn" href={gcalLink(evs[0])} target="_blank" rel="noreferrer"><Ic n="CalendarPlus" size={16}/>Abrir no Google Agenda</a>}
+    </div>
+    {msg&&<p className="mt-3 text-sm" style={{color:'var(--gold)'}}>{msg}</p>}
+    <label className="label block mt-4 mb-1" htmlFor="icstext">Conteúdo do arquivo</label>
+    <textarea id="icstext" readOnly className="field font-mono text-xs" rows={6} value={text} onFocus={e=>e.target.select()}/>
+  </Modal>;
+}
+
+/* ============ MODAL: Backup ============ */
+function BackupModal({S,setS,onClose,toast}){
+  const json=useMemo(()=>JSON.stringify({app:'pmba-painel',exportedAt:new Date().toISOString(),data:S},null,2),[S]);
+  const [paste,setPaste]=useState('');const [msg,setMsg]=useState('');const fileRef=useRef();
+  const doImport=raw=>{
+    try{const o=JSON.parse(raw);const d=o&&o.app==='pmba-painel'?o.data:o;if(!d||typeof d!=='object'||!d.schedule||!d.cards)throw 0;setS({...defaults(),...d});toast('Backup importado com sucesso.','ok');onClose();}
+    catch(e){setMsg('Arquivo inválido. Use um backup exportado por este painel.');}
+  };
+  const exp=async()=>{const r=await saveFile('pmba-backup-'+todayISO()+'.json',json,'application/json');setMsg(r==='saved'?'Backup enviado para download.':r==='declined'?'':'Não foi possível salvar aqui. Use "Copiar" e guarde o texto em um arquivo .json.');};
+  return <Modal title="Backup do progresso" onClose={onClose} wide>
+    <p className="text-sm" style={{color:'var(--muted)'}}>Tudo é salvo automaticamente neste navegador. O backup serve para guardar uma cópia ou levar o progresso para outro aparelho.</p>
+    <div className="flex flex-wrap gap-2 mt-3">
+      <button className="btn btn-gold" onClick={exp}><Ic n="Download" size={16}/>Exportar JSON</button>
+      <button className="btn" onClick={async()=>setMsg((await copyText(json))?'Backup copiado.':'Cópia bloqueada: selecione o texto manualmente.')}><Ic n="Copy" size={16}/>Copiar</button>
+    </div>
+    <div className="mt-5 pt-4 border-t" style={{borderColor:'var(--line)'}}>
+      <h4 className="font-display font-semibold mb-2">Importar backup</h4>
+      <input ref={fileRef} id="impfile" type="file" accept=".json,application/json,text/plain" className="hidden" onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>doImport(String(r.result));r.readAsText(f);e.target.value='';}}/>
+      <button className="btn" onClick={()=>fileRef.current.click()}><Ic n="Upload" size={16}/>Escolher arquivo .json</button>
+      <label className="label block mt-3 mb-1" htmlFor="imptxt">Ou cole o conteúdo do backup</label>
+      <textarea id="imptxt" className="field font-mono text-xs" rows={4} value={paste} onChange={e=>setPaste(e.target.value)} placeholder='{"app":"pmba-painel", ...}'/>
+      <button className="btn btn-ok mt-2" disabled={!paste.trim()} onClick={()=>doImport(paste)}>Importar texto colado</button>
+    </div>
+    {msg&&<p className="mt-3 text-sm" style={{color:'var(--gold)'}}>{msg}</p>}
+  </Modal>;
+}
+
+/* ============ POMODORO ============ */
+const FOCUS=40*60,BREAK=10*60;
+function PomoModal({pomo,setPomo,onClose}){
+  const total=pomo.mode==='focus'?FOCUS:BREAK,pct=(1-pomo.left/total)*100;
+  const R=88,CI=2*Math.PI*R;
+  const toggle=()=>setPomo(p=>p.running?{...p,running:false}:{...p,running:true,endAt:Date.now()+p.left*1000});
+  const reset=()=>setPomo(p=>({...p,running:false,mode:'focus',left:FOCUS}));
+  const skip=()=>setPomo(p=>{const m=p.mode==='focus'?'break':'focus';return {...p,mode:m,left:m==='focus'?FOCUS:BREAK,running:false};});
+  const col=pomo.mode==='focus'?'var(--gold)':'var(--ok)';
+  return <Modal title="Sessão de estudo" onClose={onClose}>
+    <div className="text-center">
+      <div className="label">{pomo.mode==='focus'?'Foco total · 40 min':'Pausa · 10 min'}</div>
+      <p className="text-sm mt-1 break-words" style={{color:'var(--muted)'}}>{pomo.label||'Sessão livre'}</p>
+      <div className="relative mx-auto my-4" style={{width:200,height:200}}>
+        <svg width="200" height="200" viewBox="0 0 200 200" style={{transform:'rotate(-90deg)'}}>
+          <circle cx="100" cy="100" r={R} fill="none" stroke="#14253d" strokeWidth="10"/>
+          <circle cx="100" cy="100" r={R} fill="none" stroke={col} strokeWidth="10" strokeLinecap="round" strokeDasharray={CI} strokeDashoffset={CI*(1-pct/100)} style={{transition:'stroke-dashoffset .3s linear'}}/>
+        </svg>
+        <div className="absolute inset-0 grid place-items-center"><div className="font-mono font-bold" style={{fontSize:44,color:col}}>{ft(pomo.left)}</div></div>
+      </div>
+      <div className="flex justify-center gap-2 flex-wrap">
+        <button className={'btn '+(pomo.running?'':'btn-gold')} onClick={toggle}><Ic n={pomo.running?'Pause':'Play'} size={16}/>{pomo.running?'Pausar':pomo.left<total?'Continuar':'Começar'}</button>
+        <button className="btn" onClick={reset}><Ic n="RotateCcw" size={16}/>Zerar</button>
+        <button className="btn" onClick={skip}>{pomo.mode==='focus'?'Ir p/ pausa':'Ir p/ foco'}</button>
+      </div>
+      <p className="mt-4 text-sm" style={{color:'var(--muted)'}}>Ciclos de foco concluídos: <b className="font-mono" style={{color:'var(--gold)'}}>{pomo.cycles}</b>. Cada ciclo registra 40 min e dá +15 XP.</p>
+      <p className="mt-1 text-xs" style={{color:'var(--muted)'}}>Pode fechar esta janela: o cronômetro continua rodando.</p>
+    </div>
+  </Modal>;
+}
+
+/* ============ ABA 1: DASHBOARD ============ */
+function Home({S,setS,D,today,openPomo,openIcs,goTab}){
+  const wd=new Date().getDay(),blocks=(S.schedule[wd]||[]).slice().sort((a,b)=>a.start.localeCompare(b.start));
+  const rk=RANKS[D.rankIdx],nx=RANKS[D.rankIdx+1];
+  const streak=calcStreak(S.studied);
+  const mdone=blocks.filter(b=>S.mission[today+':'+b.id]).length;
+  const toggleBlock=(b,el)=>{
+    const k=today+':'+b.id,on=!S.mission[k];
+    if(on){burstEl(el,12);SFX.ok();}
+    setS(s=>{const m={...s.mission,[k]:on};const all=(s.schedule[wd]||[]).every(x=>m[today+':'+x.id]);return {...s,mission:m,studied:all&&on?{...s.studied,[today]:true}:s.studied};});
+  };
+  const week=useMemo(()=>{const d=new Date();const mon=new Date(d);mon.setDate(d.getDate()-((d.getDay()+6)%7));return Array.from({length:7},(_,i)=>{const x=new Date(mon);x.setDate(mon.getDate()+i);return {iso:isoOf(x),wd:x.getDay()};});},[today]);
+  const due=S.cards.filter(c=>c.lv===0||c.lv==null).length;
+  return <div className="grid gap-4 lg:grid-cols-3">
+    <section className="card p-4 sm:p-5 lg:col-span-2 glow-gold min-w-0">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0"><div className="label" style={{color:'var(--gold)'}}>Missão de hoje</div>
+          <h2 className="font-display font-bold text-2xl sm:text-3xl mt-1">{DIAS[wd]}</h2>
+          <p className="text-sm mt-1" style={{color:'var(--muted)'}}>{new Date().getDate()} de {MESES[new Date().getMonth()].toLowerCase()} · {blocks.length?`${blocks.length} blocos de 45 min`:'Dia livre'}</p></div>
+        <div className="flex gap-2 flex-wrap">
+          <button className="btn" onClick={openIcs}><Ic n="CalendarPlus" size={16}/>Adicionar lembrete na agenda</button>
+        </div>
+      </div>
+      {blocks.length===0?<div className="mt-5 p-5 rounded-xl text-center" style={{background:'#0a1526',border:'1px dashed var(--line)'}}>
+        <Ic n="Heart" size={28} className="mx-auto mb-2" style={{color:'var(--ok)'}}/>
+        <p className="font-display font-semibold text-lg">Domingo livre.</p>
+        <p className="text-sm mt-1" style={{color:'var(--muted)'}}>Descanso também faz parte do plano. Se quiser, faça uma sessão leve de flashcards.</p>
+        <button className="btn mt-3" onClick={()=>goTab('cards')}><Ic n="Layers" size={16}/>Revisar flashcards</button>
+      </div>:<>
+      <div className="mt-4 grid gap-2">
+        {blocks.map((b,i)=>{const on=!!S.mission[today+':'+b.id],sj=SUBJ[b.subject]||{curto:b.subject,cor:'#888'};
+          return <div key={b.id} className="rounded-xl p-3 flex items-center gap-3 flex-wrap sm:flex-nowrap" style={{background:'#0a1526',border:'1px solid '+(on?'rgba(16,185,129,.5)':'var(--line)'),opacity:on?.78:1}}>
+            <button className={'chk '+(on?'on':'')} aria-label="Concluir bloco" onClick={e=>toggleBlock(b,e.currentTarget)}><Ic n="Check" size={16} strokeWidth={3}/></button>
+            <div className="font-mono text-xs w-[88px] flex-none" style={{color:'var(--muted)'}}>{b.start}–{addMin(b.start,45)}</div>
+            <div className="min-w-0 flex-1 basis-40">
+              <div className="flex items-center gap-2"><Dot c={sj.cor}/><b className="font-display">{sj.curto}</b>{b.subject==='mat'&&<span className="tag tag-o">Sanduíche</span>}</div>
+              <div className="text-sm break-words" style={{color:'var(--muted)'}}>{b.foco}</div>
+              {b.note&&<div className="text-xs mt-1 break-words" style={{color:'var(--gold)'}}>Nota: {b.note}</div>}
+            </div>
+            <button className="btn btn-sm btn-gold" onClick={()=>openPomo(b,i)}><Ic n="Play" size={14}/>Iniciar Sessão</button>
+          </div>;})}
+      </div>
+      <div className="mt-4 flex items-center gap-3"><div className="flex-1"><Bar v={mdone/blocks.length*100}/></div><span className="font-mono text-xs" style={{color:'var(--muted)'}}>{mdone}/{blocks.length}</span></div>
+      </>}
+    </section>
+
+    <section className="card p-4 sm:p-5 min-w-0">
+      <div className="label">Patente atual</div>
+      <div className="flex items-center gap-3 mt-2">
+        <div className="grid place-items-center rounded-xl flex-none" style={{width:56,height:56,background:'rgba(242,193,78,.12)',border:'1px solid rgba(242,193,78,.5)',color:'var(--gold)'}}><Ic n={rk.ic} size={28}/></div>
+        <div className="min-w-0"><div className="font-display font-bold text-2xl" style={{color:'var(--gold)'}}>{rk.n}</div><div className="text-xs font-mono" style={{color:'var(--muted)'}}>{D.xp} XP</div></div>
+      </div>
+      <div className="mt-4"><div className="flex justify-between text-xs mb-1" style={{color:'var(--muted)'}}><span>{nx?`Próxima: ${nx.n}`:'Patente máxima'}</span><span className="font-mono">{D.pctRank}%</span></div><Bar v={D.pctRank} color="var(--gold)" h={10}/></div>
+      <div className="mt-4"><div className="flex justify-between text-xs mb-1" style={{color:'var(--muted)'}}><span>Edital concluído</span><span className="font-mono">{D.dn}/{TOPICS.length} · {D.pct}%</span></div><Bar v={D.pct} h={10}/></div>
+      <div className="mt-4 flex flex-wrap gap-1.5">{RANKS.map((r,i)=><span key={r.n} className="tag" style={i<=D.rankIdx?{background:'rgba(242,193,78,.15)',color:'var(--gold)',border:'1px solid rgba(242,193,78,.4)'}:{background:'#0a1526',color:'var(--muted)',border:'1px solid var(--line)'}}>{r.n}</span>)}</div>
+    </section>
+
+    <section className="card p-4 sm:p-5 min-w-0">
+      <div className="flex items-center justify-between"><div className="label">Ofensiva</div><Ic n="Flame" size={20} style={{color:streak?'#fb923c':'var(--muted)'}}/></div>
+      <div className="flex items-baseline gap-2 mt-1"><span className="font-display font-bold" style={{fontSize:44,lineHeight:1,color:streak?'#fb923c':'var(--fg)'}}>{streak}</span><span style={{color:'var(--muted)'}}>{streak===1?'dia seguido':'dias seguidos'}</span></div>
+      <div className="grid grid-cols-7 gap-1 mt-4">{week.map(w=>{const on=S.studied[w.iso],t=w.iso===today;return <div key={w.iso} className="text-center"><div className="text-[10px] mb-1" style={{color:'var(--muted)'}}>{DIAS_C[w.wd]}</div><div className="grid place-items-center rounded-lg mx-auto" style={{height:30,background:on?'rgba(16,185,129,.2)':'#0a1526',border:'1px solid '+(t?'var(--gold)':on?'rgba(16,185,129,.5)':'var(--line)'),color:'var(--ok)'}}>{on&&<Ic n="Check" size={14} strokeWidth={3}/>}</div></div>;})}</div>
+      <button className="btn btn-sm mt-4" onClick={()=>{setS(s=>({...s,studied:{...s.studied,[today]:true}}));SFX.ok();}} disabled={!!S.studied[today]}><Ic n="Check" size={14}/>{S.studied[today]?'Hoje já conta como estudado':'Marcar hoje como estudado'}</button>
+    </section>
+
+    <section className="card p-4 sm:p-5 lg:col-span-2 min-w-0">
+      <div className="flex items-center justify-between gap-2 flex-wrap"><div className="label">Progresso por matéria</div><span className="text-xs" style={{color:'var(--muted)'}}>{due} flashcards para revisar · {(S.minutes[today]||0)} min estudados hoje</span></div>
+      <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2.5 mt-3">{DISC.map(d=>{const tot=d.t.length,dn=d.t.filter((_,i)=>S.done[d.id+'_'+i]).length;return <div key={d.id} className="min-w-0"><div className="flex justify-between gap-2 text-xs mb-1"><span className="flex items-center gap-2 min-w-0"><Dot c={d.cor}/><span className="truncate">{d.curto}</span></span><span className="font-mono" style={{color:'var(--muted)'}}>{dn}/{tot}</span></div><Bar v={dn/tot*100} color={d.cor} h={6}/></div>;})}</div>
+    </section>
+  </div>;
+}
+
+/* ============ ABA 2: CRONOGRAMA ============ */
+function Plan({S,setS,today,openPomo}){
+  return <div>
+    <div className="flex gap-2 mb-4"><button className={'chip '+(S.planView==='week'?'on':'')} onClick={()=>setS(s=>({...s,planView:'week'}))}><Ic n="Clock" size={13}/>Semanal</button><button className={'chip '+(S.planView==='month'?'on':'')} onClick={()=>setS(s=>({...s,planView:'month'}))}><Ic n="CalendarDays" size={13}/>Mensal</button></div>
+    {S.planView==='week'?<Week S={S} setS={setS}/>:<Month S={S} setS={setS} today={today}/>}
+  </div>;
+}
+function Week({S,setS}){
+  const drag=useRef(null);const [over,setOver]=useState('');const [noteOpen,setNoteOpen]=useState({});
+  const upd=(d,id,patch)=>setS(s=>({...s,schedule:{...s.schedule,[d]:s.schedule[d].map(b=>b.id===id?{...b,...patch}:b)}}));
+  const del=(d,id)=>setS(s=>({...s,schedule:{...s.schedule,[d]:s.schedule[d].filter(b=>b.id!==id)}}));
+  const add=d=>setS(s=>{const l=s.schedule[d]||[];const st=l.length?addMin(l[l.length-1].start,50):'19:00';return {...s,schedule:{...s.schedule,[d]:[...l,mk('sim','Questões',st)]}};});
+  const move=(d,i,dir)=>setS(s=>{const l=[...s.schedule[d]],j=i+dir;if(j<0||j>=l.length)return s;const swap=(a,b)=>({subject:b.subject,foco:b.foco,note:b.note});const A=l[i],B=l[j];l[i]={...A,...swap(A,B)};l[j]={...B,...swap(B,A)};return {...s,schedule:{...s.schedule,[d]:l}};});
+  const swapDrop=(d2,id2)=>{const f=drag.current;setOver('');drag.current=null;if(!f||(f.d===d2&&f.id===id2))return;
+    setS(s=>{const sch={...s.schedule};const A=sch[f.d].find(b=>b.id===f.id),B=sch[d2].find(b=>b.id===id2);if(!A||!B)return s;
+      const pa={subject:A.subject,foco:A.foco,note:A.note},pb={subject:B.subject,foco:B.foco,note:B.note};
+      sch[f.d]=sch[f.d].map(b=>b.id===f.id?{...b,...pb}:b);sch[d2]=sch[d2].map(b=>b.id===id2?{...b,...pa}:b);return {...s,schedule:sch};});};
+  const sandwich=d=>{const l=S.schedule[d]||[];if(l.length<3)return null;const ok=l.every((b,i)=>b.subject!=='mat'||(i>0&&i<l.length-1));return ok;};
+  const restore=()=>setS(s=>({...s,schedule:defaultSchedule()}));
+  return <div>
+    <div className="card p-4 mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="min-w-0 flex-1 basis-72"><b className="font-display">Efeito sanduíche</b><p className="text-sm" style={{color:'var(--muted)'}}>Matemática sempre no meio (nunca no primeiro nem no último bloco), com Humanas estudadas por questões. Arraste um bloco sobre outro para trocar as matérias, ou use as setas.</p></div>
+      <button className="btn btn-sm" onClick={restore}><Ic n="RotateCcw" size={14}/>Restaurar padrão pré-edital</button>
+    </div>
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {[1,2,3,4,5,6].map(d=>{const l=S.schedule[d]||[],sw=sandwich(d);return <section key={d} className="card p-3 sm:p-4 min-w-0">
+        <div className="flex items-center justify-between gap-2 mb-3"><h3 className="font-display font-bold text-lg">{DIAS[d]}</h3>
+          {sw===true&&<span className="tag tag-o">Sanduíche ok</span>}{sw===false&&<span className="tag" style={{background:'rgba(240,97,109,.15)',color:'var(--bad)',border:'1px solid rgba(240,97,109,.4)'}}>Matemática fora do meio</span>}</div>
+        <div className="grid gap-2">
+          {l.map((b,i)=>{const sj=SUBJ[b.subject]||{cor:'#888'};const key=d+b.id;
+            return <div key={b.id} draggable onDragStart={e=>{drag.current={d,id:b.id};e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',b.id);}catch(x){}}} onDragOver={e=>{e.preventDefault();setOver(key);}} onDragLeave={()=>setOver('')} onDrop={e=>{e.preventDefault();swapDrop(d,b.id);}} onDragEnd={()=>setOver('')}
+              className={'rounded-xl p-2.5 '+(over===key?'dragover':'')} style={{background:'#0a1526',border:'1px solid var(--line)',borderLeft:'4px solid '+sj.cor}}>
+              <div className="flex items-center gap-1.5">
+                <span style={{cursor:'grab',color:'var(--muted)'}} title="Arraste para trocar"><Ic n="GripVertical" size={16}/></span>
+                <input type="time" className="field font-mono !py-1 !px-2" style={{width:106}} value={b.start} onChange={e=>upd(d,b.id,{start:e.target.value||b.start})} aria-label="Horário de início"/>
+                <span className="text-xs font-mono" style={{color:'var(--muted)'}}>→{addMin(b.start,45)}</span>
+                <div className="ml-auto flex">
+                  <button className="btn btn-ghost btn-sm !px-1.5" onClick={()=>move(d,i,-1)} disabled={i===0} aria-label="Subir"><Ic n="ArrowUp" size={14}/></button>
+                  <button className="btn btn-ghost btn-sm !px-1.5" onClick={()=>move(d,i,1)} disabled={i===l.length-1} aria-label="Descer"><Ic n="ArrowDown" size={14}/></button>
+                  <button className="btn btn-ghost btn-sm !px-1.5" onClick={()=>del(d,b.id)} aria-label="Remover bloco"><Ic n="Trash2" size={14}/></button>
+                </div>
+              </div>
+              <select className="field mt-2 !py-1.5" value={b.subject} onChange={e=>upd(d,b.id,{subject:e.target.value})} aria-label="Matéria">{SUBJ_IDS.map(s=><option key={s} value={s}>{SUBJ[s].curto}</option>)}</select>
+              <input className="field mt-2 !py-1.5" value={b.foco} onChange={e=>upd(d,b.id,{foco:e.target.value})} placeholder="Foco do bloco" aria-label="Foco do bloco"/>
+              <button className="text-xs mt-1.5 flex items-center gap-1" style={{color:b.note?'var(--gold)':'var(--muted)',background:'none',border:0,cursor:'pointer'}} onClick={()=>setNoteOpen(o=>({...o,[key]:!o[key]}))}><Ic n="StickyNote" size={12}/>{b.note?'Nota':'Adicionar nota'}</button>
+              {(noteOpen[key]||b.note)&&<textarea className="field mt-1 text-sm" rows={2} value={b.note} onChange={e=>upd(d,b.id,{note:e.target.value})} placeholder="Anotações para este bloco" aria-label="Nota"/>}
+            </div>;})}
+        </div>
+        <button className="btn btn-sm mt-3 w-full" onClick={()=>add(d)}><Ic n="Plus" size={14}/>Adicionar bloco</button>
+      </section>;})}
+      <section className="card p-4 flex items-center gap-3 min-w-0" style={{borderStyle:'dashed'}}><Ic n="Heart" size={26} style={{color:'var(--ok)'}}/><div><h3 className="font-display font-bold text-lg">Domingo</h3><p className="text-sm" style={{color:'var(--muted)'}}>Livre. Descanso é parte da estratégia.</p></div></section>
+    </div>
+  </div>;
+}
+function Month({S,setS,today}){
+  const t0=parseISO(today);const [cur,setCur]=useState({y:t0.getFullYear(),m:t0.getMonth()});const [sel,setSel]=useState(today);
+  const [nt,setNt]=useState('');const [ng,setNg]=useState('');
+  const first=new Date(cur.y,cur.m,1),days=new Date(cur.y,cur.m+1,0).getDate(),lead=first.getDay();
+  const cells=[...Array(lead).fill(null),...Array.from({length:days},(_,i)=>isoOf(new Date(cur.y,cur.m,i+1)))];
+  const mk_=cur.y+'-'+pad(cur.m+1);
+  const goals=S.goals[mk_]||[],tasks=S.tasks[sel]||[];
+  const nav=n=>{const d=new Date(cur.y,cur.m+n,1);setCur({y:d.getFullYear(),m:d.getMonth()});};
+  const setTasks=f=>setS(s=>({...s,tasks:{...s.tasks,[sel]:f(s.tasks[sel]||[])}}));
+  const setGoals=f=>setS(s=>({...s,goals:{...s.goals,[mk_]:f(s.goals[mk_]||[])}}));
+  const sd=parseISO(sel),tpl=(S.schedule[sd.getDay()]||[]).slice().sort((a,b)=>a.start.localeCompare(b.start));
+  const studiedN=Object.keys(S.studied).filter(k=>S.studied[k]&&k.startsWith(mk_)).length;
+  return <div className="grid gap-4 lg:grid-cols-5">
+    <section className="card p-3 sm:p-4 lg:col-span-3 min-w-0">
+      <div className="flex items-center justify-between mb-3 gap-2"><button className="btn btn-sm" onClick={()=>nav(-1)} aria-label="Mês anterior"><Ic n="ChevronLeft" size={16}/></button>
+        <div className="text-center"><h3 className="font-display font-bold text-xl">{MESES[cur.m]} {cur.y}</h3><div className="text-xs" style={{color:'var(--muted)'}}>{studiedN} dias estudados no mês</div></div>
+        <button className="btn btn-sm" onClick={()=>nav(1)} aria-label="Próximo mês"><Ic n="ChevronRight" size={16}/></button></div>
+      <div className="grid grid-cols-7 gap-1 text-center mb-1">{DIAS_C.map(d=><div key={d} className="label !text-[10px]">{d}</div>)}</div>
+      <div className="grid grid-cols-7 gap-1">{cells.map((iso,i)=>{if(!iso)return <div key={'e'+i}/>;const on=S.studied[iso],tk=S.tasks[iso]||[],isT=iso===today,isS=iso===sel;
+        return <button key={iso} onClick={()=>setSel(iso)} className="rounded-lg relative text-left p-1 sm:p-1.5" style={{minHeight:56,background:on?'rgba(16,185,129,.16)':'#0a1526',border:'1px solid '+(isS?'var(--gold)':isT?'rgba(242,193,78,.5)':on?'rgba(16,185,129,.5)':'var(--line)'),cursor:'pointer',color:'var(--fg)'}}>
+          <span className="text-sm font-semibold" style={{color:isT?'var(--gold)':undefined}}>{+iso.slice(8)}</span>
+          {on&&<span className="absolute top-1 right-1" style={{color:'var(--ok)'}}><Ic n="Check" size={13} strokeWidth={3}/></span>}
+          {tk.length>0&&<div className="flex gap-0.5 mt-1 flex-wrap">{tk.slice(0,4).map(t=><span key={t.id} className="rounded-full" style={{width:6,height:6,background:t.done?'var(--ok)':'var(--gold)'}}/>)}</div>}
+        </button>;})}</div>
+      <div className="flex gap-4 mt-3 text-xs flex-wrap" style={{color:'var(--muted)'}}><span className="flex items-center gap-1.5"><Ic n="Check" size={12} style={{color:'var(--ok)'}}/>Dia estudado</span><span className="flex items-center gap-1.5"><Dot c="var(--gold)"/>Tarefa pendente</span><span className="flex items-center gap-1.5"><Dot c="var(--ok)"/>Tarefa feita</span></div>
+    </section>
+    <div className="lg:col-span-2 grid gap-4 content-start min-w-0">
+      <section className="card p-4">
+        <div className="label">Metas de {MESES[cur.m]}</div>
+        <div className="grid gap-1.5 mt-2">{goals.length===0&&<p className="text-sm" style={{color:'var(--muted)'}}>Nenhuma meta ainda. Exemplo: "Fechar Porcentagem e Regra de 3".</p>}
+          {goals.map(g=><div key={g.id} className="flex items-center gap-2"><input type="checkbox" className="w-4 h-4 flex-none" checked={g.done} onChange={()=>setGoals(l=>l.map(x=>x.id===g.id?{...x,done:!x.done}:x))} aria-label="Meta concluída"/><input className="field !py-1" style={{textDecoration:g.done?'line-through':'none',opacity:g.done?.6:1}} value={g.text} onChange={e=>setGoals(l=>l.map(x=>x.id===g.id?{...x,text:e.target.value}:x))} aria-label="Texto da meta"/><button className="btn btn-ghost btn-sm !px-1.5" onClick={()=>setGoals(l=>l.filter(x=>x.id!==g.id))} aria-label="Remover meta"><Ic n="Trash2" size={14}/></button></div>)}</div>
+        <form className="flex gap-2 mt-3" onSubmit={e=>{e.preventDefault();if(!ng.trim())return;setGoals(l=>[...l,{id:uid(),text:ng.trim(),done:false}]);setNg('');}}><input id="novameta" className="field" placeholder="Nova meta do mês" value={ng} onChange={e=>setNg(e.target.value)}/><button className="btn btn-gold" type="submit" aria-label="Adicionar meta"><Ic n="Plus" size={16}/></button></form>
+      </section>
+      <section className="card p-4">
+        <div className="label">{DIAS[sd.getDay()]}, {sd.getDate()} de {MESES[sd.getMonth()].toLowerCase()}</div>
+        <button className={'btn btn-sm mt-2 '+(S.studied[sel]?'btn-ok':'')} onClick={()=>{setS(s=>({...s,studied:{...s.studied,[sel]:!s.studied[sel]}}));if(!S.studied[sel])SFX.ok();}}><Ic n="Check" size={14}/>{S.studied[sel]?'Dia estudado':'Marcar como estudado'}</button>
+        <div className="mt-3 text-sm"><div className="label mb-1">Plano padrão do dia</div>{tpl.length===0?<p style={{color:'var(--muted)'}}>Dia livre.</p>:tpl.map(b=><div key={b.id} className="flex gap-2 py-0.5 min-w-0"><span className="font-mono text-xs flex-none" style={{color:'var(--muted)',paddingTop:2}}>{b.start}</span><span className="min-w-0 break-words"><Dot c={SUBJ[b.subject]?.cor}/> <b>{SUBJ[b.subject]?.curto}</b> <span style={{color:'var(--muted)'}}>· {b.foco}</span></span></div>)}</div>
+        <div className="label mt-4 mb-1">Tarefas específicas</div>
+        <div className="grid gap-1.5">{tasks.map(t=><div key={t.id} className="flex items-center gap-2"><input type="checkbox" className="w-4 h-4 flex-none" checked={t.done} onChange={()=>setTasks(l=>l.map(x=>x.id===t.id?{...x,done:!x.done}:x))} aria-label="Tarefa concluída"/><input className="field !py-1" style={{textDecoration:t.done?'line-through':'none',opacity:t.done?.6:1}} value={t.text} onChange={e=>setTasks(l=>l.map(x=>x.id===t.id?{...x,text:e.target.value}:x))} aria-label="Texto da tarefa"/><button className="btn btn-ghost btn-sm !px-1.5" onClick={()=>setTasks(l=>l.filter(x=>x.id!==t.id))} aria-label="Remover tarefa"><Ic n="Trash2" size={14}/></button></div>)}</div>
+        <form className="flex gap-2 mt-2" onSubmit={e=>{e.preventDefault();if(!nt.trim())return;setTasks(l=>[...l,{id:uid(),text:nt.trim(),done:false}]);setNt('');}}><input id="novatarefa" className="field" placeholder="Nova tarefa para este dia" value={nt} onChange={e=>setNt(e.target.value)}/><button className="btn btn-gold" type="submit" aria-label="Adicionar tarefa"><Ic n="Plus" size={16}/></button></form>
+      </section>
+    </div>
+  </div>;
+}
+
+/* ============ ABA 3: EDITAL ============ */
+function Edital({S,setS}){
+  const [q,setQ]=useState('');const [flt,setFlt]=useState('todos');const [open,setOpen]=useState({lp:true,mat:true});
+  const ql=q.trim().toLowerCase();
+  const toggle=(t,el)=>{
+    const on=!S.done[t.id];
+    if(on){burstEl(el,t.p==='o'?22:14);SFX.ok();}
+    setS(s=>{const d={...s.done};if(on)d[t.id]=true;else delete d[t.id];return {...s,done:d};});
+  };
+  const vis=t=>(!ql||t.txt.toLowerCase().includes(ql)||SUBJ[t.d].curto.toLowerCase().includes(ql))&&(flt==='todos'||(flt==='pend'&&!S.done[t.id])||(flt==='conc'&&S.done[t.id])||(flt==='alta'&&t.p==='o'));
+  const filtering=ql||flt!=='todos';
+  const F=[['todos','Todos'],['pend','Pendentes'],['conc','Concluídos'],['alta','Alta Prioridade']];
+  let shown=0;
+  const blocks=DISC.map(d=>{const ts=TOPICS.filter(t=>t.d===d.id),vs=ts.filter(vis);shown+=vs.length;return {d,ts,vs};});
+  return <div>
+    <div className="card p-3 sm:p-4 mb-4 sticky z-30" style={{top:'calc(env(safe-area-inset-top,0px) + 58px)'}}>
+      <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2" style={{color:'var(--muted)'}}><Ic n="Search" size={16}/></span><input id="busca" className="field" style={{paddingLeft:'2.2rem'}} placeholder="Buscar assunto ou matéria (ex.: crase, Canudos, flagrante)" value={q} onChange={e=>setQ(e.target.value)}/></div>
+      <div className="flex flex-wrap gap-2 mt-3">{F.map(([k,l])=><button key={k} className={'chip '+(flt===k?'on':'')} onClick={()=>setFlt(k)}>{k==='alta'&&<Ic n="Star" size={12}/>}{l}</button>)}
+        <button className="chip ml-auto" onClick={()=>setOpen(DISC.every(d=>open[d.id])?{}:Object.fromEntries(DISC.map(d=>[d.id,true])))}>{DISC.every(d=>open[d.id])?'Recolher tudo':'Expandir tudo'}</button></div>
+    </div>
+    {filtering&&shown===0&&<div className="card p-6 text-center" style={{color:'var(--muted)'}}>Nenhum assunto encontrado com esses filtros.</div>}
+    <div className="grid gap-3">{blocks.map(({d,ts,vs})=>{
+      if(filtering&&vs.length===0)return null;
+      const dn=ts.filter(t=>S.done[t.id]).length,isOpen=filtering||open[d.id];
+      return <section key={d.id} className="card overflow-hidden">
+        <button className="w-full flex items-center gap-3 p-3 sm:p-4 text-left" style={{background:'none',border:0,color:'inherit',cursor:'pointer'}} onClick={()=>setOpen(o=>({...o,[d.id]:!o[d.id]}))} aria-expanded={!!isOpen}>
+          <span className="rounded-lg grid place-items-center flex-none" style={{width:34,height:34,background:d.cor+'22',border:'1px solid '+d.cor+'66',color:d.cor}}>{dn===ts.length?<Ic n="Check" size={18} strokeWidth={3}/>:<Ic n="BookOpen" size={16}/>}</span>
+          <div className="min-w-0 flex-1"><div className="font-display font-bold break-words">{d.nome}</div><div className="flex items-center gap-2 mt-1.5"><div className="flex-1"><Bar v={dn/ts.length*100} color={d.cor} h={6}/></div><span className="font-mono text-xs" style={{color:'var(--muted)'}}>{dn}/{ts.length}</span></div></div>
+          <Ic n={isOpen?'ChevronUp':'ChevronDown'} size={18} style={{color:'var(--muted)'}}/>
+        </button>
+        {isOpen&&<div className="px-3 sm:px-4 pb-3 grid gap-1.5">{vs.map(t=>{const on=!!S.done[t.id];return <div key={t.id} className="flex items-start gap-3 rounded-lg p-2.5 flex-wrap sm:flex-nowrap" style={{background:on?'rgba(16,185,129,.07)':'#0a1526',border:'1px solid '+(on?'rgba(16,185,129,.35)':t.p==='o'?'rgba(242,193,78,.25)':'var(--line)')}}>
+          <button className={'chk '+(on?'on':'')} onClick={e=>toggle(t,e.currentTarget)} aria-label={(on?'Desmarcar: ':'Concluir: ')+t.txt} aria-pressed={on}><Ic n="Check" size={16} strokeWidth={3}/></button>
+          <div className="min-w-0 flex-1 basis-48 break-words pt-0.5" style={{opacity:on?.65:1,textDecoration:on?'line-through':'none'}}>{t.txt}</div>
+          <span className={'tag tag-'+t.p}>{t.p==='o'&&<Ic n="Star" size={10} className="mr-1"/>}{PRIO[t.p]}</span>
+        </div>;})}</div>}
+      </section>;})}</div>
+    <p className="text-xs mt-4" style={{color:'var(--muted)'}}>Conteúdo montado a partir do programa usual da PMBA. Antes de fechar o plano, confira cada item com o edital do concurso vigente.</p>
+  </div>;
+}
+
+/* ============ ABA 4: FLASHCARDS ============ */
+function Cards({S,setS,addXp}){
+  const [subj,setSubj]=useState('all');const [curId,setCurId]=useState(null);const [flip,setFlip]=useState(false);const [view,setView]=useState('rev');
+  const [fs,setFs]=useState('lp');const [fq,setFq]=useState('');const [fa,setFa]=useState('');
+  const inSubj=c=>subj==='all'||c.s===subj;
+  const next=useCallback((excl)=>{
+    const pool=S.cards.filter(c=>inSubj(c)&&c.id!==excl);const list=pool.length?pool:S.cards.filter(inSubj);
+    if(!list.length)return null;const now=Date.now();
+    return list.map(c=>{let sc=c.lv==null?70:c.lv===0?100:c.lv===1?55:10;sc+=Math.min((now-(c.last||0))/36e5,24)+Math.random()*25;return [sc,c.id];}).sort((a,b)=>b[0]-a[0])[0][1];
+  },[S.cards,subj]);
+  const cur=S.cards.find(c=>c.id===curId&&inSubj(c));
+  useEffect(()=>{if(!cur)setCurId(next(null));},[cur,subj,S.cards.length]);
+  const rate=lv=>{
+    if(!cur)return;const id=cur.id;
+    setS(s=>({...s,cards:s.cards.map(c=>c.id===id?{...c,lv,last:Date.now(),seen:c.seen+1,errs:c.errs+(lv===0?1:0)}:c)}));
+    addXp(lv===2?3:lv===1?2:1);
+    if(lv===2){SFX.ok();}else if(lv===0){SFX.bad();}
+    setFlip(false);setTimeout(()=>setCurId(next(id)),330);
+  };
+  const cnt={n:0,0:0,1:0,2:0};S.cards.filter(inSubj).forEach(c=>cnt[c.lv==null?'n':c.lv]++);
+  const present=[...new Set(S.cards.map(c=>c.s))];
+  const addCard=e=>{e.preventDefault();if(!fq.trim()||!fa.trim())return;setS(s=>({...s,cards:[{id:uid(),s:fs,q:fq.trim(),a:fa.trim(),lv:null,last:0,seen:0,errs:0},...s.cards]}));setFq('');setFa('');SFX.ok();};
+  return <div>
+    <div className="flex flex-wrap gap-2 mb-4 items-center">
+      <button className={'chip '+(view==='rev'?'on':'')} onClick={()=>setView('rev')}><Ic n="Brain" size={13}/>Revisar</button>
+      <button className={'chip '+(view==='add'?'on':'')} onClick={()=>setView('add')}><Ic n="Plus" size={13}/>Meus cards ({S.cards.length})</button>
+      <span className="w-px h-5 mx-1" style={{background:'var(--line)'}}/>
+      <button className={'chip '+(subj==='all'?'on':'')} onClick={()=>{setSubj('all');setFlip(false);}}>Todas</button>
+      {present.map(s=><button key={s} className={'chip '+(subj===s?'on':'')} onClick={()=>{setSubj(s);setFlip(false);}}><Dot c={SUBJ[s]?.cor}/>{SUBJ[s]?.curto}</button>)}
+    </div>
+    {view==='rev'?<div className="grid gap-4 lg:grid-cols-3">
+      <div className="lg:col-span-2 min-w-0">
+        {!cur?<div className="card p-8 text-center" style={{color:'var(--muted)'}}>Nenhum card nesta matéria. Crie o primeiro em "Meus cards".</div>:<>
+        <div className="persp"><div style={{height:'clamp(300px,52vh,420px)'}}>
+          <div className={'flip '+(flip?'on':'')} onClick={()=>{setFlip(f=>!f);SFX.flip();}} role="button" tabIndex={0} aria-label="Virar card" onKeyDown={e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();setFlip(f=>!f);}}} style={{cursor:'pointer'}}>
+            <div className="face" style={{background:'linear-gradient(160deg,#16294a,#0d1a2e)',border:'1px solid #2b4570'}}>
+              <div className="flex items-center justify-between gap-2"><span className="tag" style={{background:(SUBJ[cur.s]?.cor||'#888')+'22',color:SUBJ[cur.s]?.cor,border:'1px solid '+(SUBJ[cur.s]?.cor||'#888')+'66'}}>{SUBJ[cur.s]?.curto}</span><span className="label">Pergunta</span></div>
+              <div className="flex-1 grid place-items-center text-center py-4"><p className="font-display font-semibold text-xl sm:text-2xl break-words" style={{maxWidth:'100%'}}>{cur.q}</p></div>
+              <div className="text-center text-xs" style={{color:'var(--muted)'}}>Toque para virar</div>
+            </div>
+            <div className="face back" style={{background:'linear-gradient(160deg,#0f2c28,#0d1a2e)',border:'1px solid rgba(16,185,129,.5)'}}>
+              <div className="flex items-center justify-between gap-2"><span className="tag tag-o">Resposta</span><span className="label">{SUBJ[cur.s]?.curto}</span></div>
+              <div className="flex-1 py-3 overflow-auto"><p className="text-base sm:text-lg break-words whitespace-pre-line" style={{lineHeight:1.55}}>{cur.a}</p></div>
+            </div>
+          </div></div></div>
+        <div className="grid grid-cols-3 gap-2 mt-3" style={{opacity:flip?1:.45,pointerEvents:flip?'auto':'none'}}>
+          <button className="btn" style={{borderColor:'rgba(240,97,109,.6)',color:'var(--bad)'}} onClick={()=>rate(0)}>Errei<span className="hidden sm:inline"> - Revisar logo</span></button>
+          <button className="btn" style={{borderColor:'rgba(242,193,78,.6)',color:'var(--gold)'}} onClick={()=>rate(1)}>Difícil</button>
+          <button className="btn btn-ok" onClick={()=>rate(2)}>Fácil</button>
+        </div>
+        {!flip&&<p className="text-center text-xs mt-2" style={{color:'var(--muted)'}}>Vire o card para se autoavaliar. Cards errados voltam com mais frequência.</p>}
+        </>}
+      </div>
+      <aside className="card p-4 content-start min-w-0"><div className="label">Placar do baralho</div>
+        <div className="grid gap-2 mt-3 text-sm">{[['Novos',cnt.n,'var(--muted)'],['Errei',cnt[0],'var(--bad)'],['Difícil',cnt[1],'var(--gold)'],['Fácil',cnt[2],'var(--ok)']].map(([l,n,c])=><div key={l} className="flex items-center justify-between"><span style={{color:c}}>{l}</span><span className="font-mono font-bold">{n}</span></div>)}</div>
+        <div className="mt-4"><Bar v={(cnt[2]/Math.max(1,S.cards.filter(inSubj).length))*100}/><div className="text-xs mt-1" style={{color:'var(--muted)'}}>domínio do baralho</div></div>
+      </aside>
+    </div>:<div className="grid gap-4 lg:grid-cols-5">
+      <form className="card p-4 lg:col-span-2 content-start grid gap-3 min-w-0 self-start" onSubmit={addCard}>
+        <div className="label">Novo flashcard</div>
+        <div><label className="label block mb-1" htmlFor="fcs">Matéria</label><select id="fcs" className="field" value={fs} onChange={e=>setFs(e.target.value)}>{SUBJ_IDS.map(s=><option key={s} value={s}>{SUBJ[s].curto}</option>)}</select></div>
+        <div><label className="label block mb-1" htmlFor="fcq">Pergunta</label><textarea id="fcq" className="field" rows={2} value={fq} onChange={e=>setFq(e.target.value)} placeholder="Ex.: Qual a diferença entre dolo e culpa?"/></div>
+        <div><label className="label block mb-1" htmlFor="fca">Resposta</label><textarea id="fca" className="field" rows={4} value={fa} onChange={e=>setFa(e.target.value)} placeholder="Escreva do seu jeito, com macetes e exemplos."/></div>
+        <button className="btn btn-gold" type="submit" disabled={!fq.trim()||!fa.trim()}><Ic n="Plus" size={16}/>Adicionar card</button>
+      </form>
+      <div className="lg:col-span-3 grid gap-2 content-start min-w-0">{S.cards.filter(inSubj).map(c=><div key={c.id} className="card p-3 flex items-start gap-3"><div className="min-w-0 flex-1"><div className="flex items-center gap-2 mb-1"><Dot c={SUBJ[c.s]?.cor}/><span className="text-xs" style={{color:'var(--muted)'}}>{SUBJ[c.s]?.curto}</span>{c.lv===0&&<span className="tag" style={{background:'rgba(240,97,109,.15)',color:'var(--bad)'}}>Errei</span>}{c.lv===2&&<span className="tag tag-o" style={{color:'var(--ok)'}}>Fácil</span>}</div><div className="font-semibold break-words">{c.q}</div><div className="text-sm mt-1 break-words whitespace-pre-line" style={{color:'var(--muted)'}}>{c.a}</div></div><button className="btn btn-ghost btn-sm !px-1.5" onClick={()=>setS(s=>({...s,cards:s.cards.filter(x=>x.id!==c.id)}))} aria-label="Excluir card"><Ic n="Trash2" size={15}/></button></div>)}
+        {S.cards.filter(inSubj).length===0&&<div className="card p-6 text-center" style={{color:'var(--muted)'}}>Sem cards nesta matéria.</div>}</div>
+    </div>}
+  </div>;
+}
+
+/* ============ ABA 5: ARENA ============ */
+function Arena({S,setS,addXp,bestSet}){
+  const [g,setG]=useState(null);
+  const G=[{id:'quiz',n:'Quiz Relâmpago',d:'Certo ou Errado em 60 segundos, no estilo banca. Direito, História da Bahia, Português e Informática.',ic:'Zap',c:'#f2c14e'},
+          {id:'match',n:'Desafio de Conexão',d:'Ligue cada termo à sua definição. Menos erros e menos tempo rendem mais pontos.',ic:'Link2',c:'#34d399'},
+          {id:'math',n:'Sobrevivência em Matemática',d:'Problemas infinitos e comentados passo a passo: porcentagem, regra de 3, média, mediana e sequências.',ic:'Calculator',c:'#f59e0b'}];
+  if(g)return <div><button className="btn btn-sm mb-4" onClick={()=>setG(null)}><Ic n="ChevronLeft" size={14}/>Voltar à Arena</button>
+    {g==='quiz'&&<Quiz best={S.best.quiz} onEnd={(sc)=>{addXp(Math.floor(sc/10));bestSet('quiz',sc);}}/>}
+    {g==='match'&&<Match best={S.best.match} onEnd={(sc)=>{addXp(Math.floor(sc/10));bestSet('match',sc);}}/>}
+    {g==='math'&&<MathGame best={S.best.math} onEnd={(sc)=>{addXp(Math.floor(sc/10));bestSet('math',sc);}}/>}
+  </div>;
+  return <div className="grid gap-4 md:grid-cols-3">{G.map(x=><button key={x.id} onClick={()=>setG(x.id)} className="card p-5 text-left min-w-0 hover:-translate-y-0.5 transition-transform" style={{cursor:'pointer',color:'inherit'}}>
+    <div className="grid place-items-center rounded-xl mb-4" style={{width:48,height:48,background:x.c+'22',border:'1px solid '+x.c+'66',color:x.c}}><Ic n={x.ic} size={24}/></div>
+    <h3 className="font-display font-bold text-xl">{x.n}</h3><p className="text-sm mt-2" style={{color:'var(--muted)'}}>{x.d}</p>
+    <div className="flex items-center justify-between mt-4"><span className="text-xs font-mono" style={{color:'var(--gold)'}}>Recorde: {S.best[x.id]||0}</span><span className="btn btn-sm btn-gold"><Ic n="Play" size={13}/>Jogar</span></div></button>)}</div>;
+}
+function EndCard({title,score,best,newBest,onAgain,extra}){
+  return <div className="card p-6 text-center rise glow-gold">
+    <Ic n="Trophy" size={36} className="mx-auto" style={{color:'var(--gold)'}}/>
+    <h3 className="font-display font-bold text-2xl mt-2">{title}</h3>
+    <div className="font-display font-bold mt-2" style={{fontSize:48,color:'var(--gold)',lineHeight:1}}>{score}<span className="text-lg" style={{color:'var(--muted)'}}> pts</span></div>
+    {newBest&&<div className="tag tag-o mt-2">Novo recorde</div>}
+    <p className="text-sm mt-2" style={{color:'var(--muted)'}}>Recorde: {Math.max(best,score)} · +{Math.floor(score/10)} XP</p>
+    {extra&&<p className="text-sm mt-1" style={{color:'var(--muted)'}}>{extra}</p>}
+    <button className="btn btn-gold mt-4" onClick={onAgain}><Ic n="RotateCcw" size={16}/>Jogar de novo</button>
+  </div>;
+}
+function Quiz({best,onEnd}){
+  const [ph,setPh]=useState('idle');const [deck,setDeck]=useState([]);const [i,setI]=useState(0);const [sc,setSc]=useState(0);const [t,setT]=useState(60);const [st,setSt]=useState(0);const [ans,setAns]=useState(null);const [hit,setHit]=useState(0);const [tot,setTot]=useState(0);
+  const start=()=>{setDeck(shuffle(QUIZ));setI(0);setSc(0);setT(60);setSt(0);setAns(null);setHit(0);setTot(0);setPh('run');};
+  useEffect(()=>{if(ph!=='run')return;const id=setInterval(()=>setT(x=>x-1),1000);return()=>clearInterval(id);},[ph]);
+  useEffect(()=>{if(ph==='run'&&t<=0){setPh('end');onEnd(sc);}},[t,ph]);
+  const nextQ=()=>{setAns(null);setI(x=>(x+1)%deck.length);};
+  const answer=v=>{if(ans)return;const q=deck[i],ok=v===q[1];setTot(x=>x+1);
+    if(ok){const ns=st+1;setSt(ns);setSc(x=>x+10+Math.min(10,(ns-1)*2));setHit(x=>x+1);SFX.ok();setAns({ok,ex:q[2]});setTimeout(()=>setAns(a=>{if(a&&a.ok){setI(x=>(x+1)%deck.length);return null;}return a;}),1300);}
+    else{setSt(0);setSc(x=>Math.max(0,x-5));SFX.bad();setAns({ok,ex:q[2]});}};
+  if(ph==='idle')return <div className="card p-6 text-center"><Ic n="Zap" size={34} className="mx-auto" style={{color:'var(--gold)'}}/><h3 className="font-display font-bold text-2xl mt-2">Quiz Relâmpago</h3><p className="text-sm mt-2 max-w-md mx-auto" style={{color:'var(--muted)'}}>Você tem 60 segundos. Acerto: +10 pontos, com bônus de sequência. Erro: −5 pontos. Julgue cada afirmação como CERTO ou ERRADO.</p><p className="text-xs mt-2 font-mono" style={{color:'var(--gold)'}}>Recorde: {best}</p><button className="btn btn-gold mt-4" onClick={start}><Ic n="Play" size={16}/>Começar</button></div>;
+  if(ph==='end')return <EndCard title="Tempo esgotado" score={sc} best={best} newBest={sc>best} onAgain={start} extra={`${hit} acertos em ${tot} respostas.`}/>;
+  const q=deck[i];
+  return <div className="grid gap-3 max-w-2xl mx-auto">
+    <div className="flex items-center gap-3"><div className="font-mono font-bold text-2xl" style={{color:t<=10?'var(--bad)':'var(--gold)',minWidth:56}}>{ft(Math.max(0,t))}</div><div className="flex-1"><Bar v={t/60*100} color={t<=10?'var(--bad)':'var(--gold)'} h={10}/></div><div className="font-mono text-sm">{sc} pts</div></div>
+    <div className="text-xs flex gap-3" style={{color:'var(--muted)'}}><span>Sequência: <b style={{color:'var(--ok)'}}>{st}</b></span><span>Acertos: <b>{hit}</b></span></div>
+    <div className={'card p-5 sm:p-6 '+(ans&&!ans.ok?'shake':'')} style={{minHeight:150,borderColor:ans?(ans.ok?'var(--ok)':'var(--bad)'):undefined}}>
+      <p className="font-display text-lg sm:text-xl break-words" style={{lineHeight:1.45}}>{q[0]}</p>
+      {ans&&<div className="mt-3 text-sm rise" style={{color:ans.ok?'var(--ok)':'var(--bad)'}}><b>{ans.ok?'Correto!':'Errado.'}</b> <span style={{color:'var(--fg)'}}>{ans.ex}</span></div>}
+    </div>
+    {ans&&!ans.ok?<button className="btn btn-gold" onClick={nextQ}>Próxima<Ic n="ChevronRight" size={16}/></button>:
+    <div className="grid grid-cols-2 gap-3"><button className="btn btn-ok py-4 text-base" disabled={!!ans} onClick={()=>answer(true)}><Ic n="Check" size={18}/>CERTO</button><button className="btn py-4 text-base" style={{background:'var(--bad)',borderColor:'var(--bad)',color:'#1d0407'}} disabled={!!ans} onClick={()=>answer(false)}><Ic n="X" size={18}/>ERRADO</button></div>}
+  </div>;
+}
+function Match({best,onEnd}){
+  const [setIdx,setSetIdx]=useState(()=>ri(0,MATCH.length-1));
+  const mkRound=idx=>{const p=MATCH[idx].p.map((x,i)=>({id:i,t:x[0],d:x[1]}));return {terms:p,defs:shuffle(p)};};
+  const [R,setR]=useState(()=>mkRound(setIdx));const [selT,setSelT]=useState(null);const [done,setDone]=useState({});const [wrong,setWrong]=useState(0);const [bad,setBad]=useState(null);const [t0,setT0]=useState(Date.now());const [now,setNow]=useState(Date.now());const [fin,setFin]=useState(null);
+  const newRound=()=>{const n=(setIdx+1+ri(0,MATCH.length-2))%MATCH.length;setSetIdx(n);setR(mkRound(n));setSelT(null);setDone({});setWrong(0);setBad(null);setT0(Date.now());setNow(Date.now());setFin(null);};
+  useEffect(()=>{if(fin)return;const id=setInterval(()=>setNow(Date.now()),500);return()=>clearInterval(id);},[fin]);
+  const secs=Math.floor(((fin?fin.end:now)-t0)/1000);
+  const hues=['#34d399','#f2c14e','#38bdf8','#f472b6','#a78bfa'];
+  const clickDef=d=>{if(done[d.id]||selT==null)return;
+    if(d.id===selT){const nd={...done,[d.id]:true};setDone(nd);setSelT(null);SFX.ok();
+      if(Object.keys(nd).length===R.terms.length){const end=Date.now(),s=Math.max(10,100-wrong*10-Math.floor((end-t0)/3000));setFin({end,score:s});onEnd(s);}}
+    else{setWrong(w=>w+1);setBad(d.id);SFX.bad();setTimeout(()=>setBad(null),420);}};
+  if(fin)return <EndCard title="Conexões completas" score={fin.score} best={best} newBest={fin.score>best} onAgain={newRound} extra={`${wrong} erros · ${ft(secs)} de tempo.`}/>;
+  return <div className="max-w-3xl mx-auto">
+    <div className="flex items-center justify-between mb-3 gap-3 flex-wrap"><div><div className="label">Desafio de Conexão</div><h3 className="font-display font-bold text-xl">{MATCH[setIdx].t}</h3></div><div className="font-mono text-sm flex gap-4"><span style={{color:'var(--bad)'}}>Erros: {wrong}</span><span style={{color:'var(--gold)'}}>{ft(secs)}</span></div></div>
+    <p className="text-sm mb-3" style={{color:'var(--muted)'}}>Toque em um termo à esquerda e depois na definição correspondente à direita.</p>
+    <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid gap-2 content-start">{R.terms.map(x=>{const dn=done[x.id],sel=selT===x.id;return <button key={x.id} disabled={dn} onClick={()=>setSelT(sel?null:x.id)} className="btn !justify-start text-left !py-3 font-display" style={{background:dn?hues[x.id%5]+'22':sel?'rgba(242,193,78,.16)':undefined,borderColor:dn?hues[x.id%5]:sel?'var(--gold)':undefined,color:dn?hues[x.id%5]:sel?'var(--gold)':undefined}}>{dn&&<Ic n="Check" size={15} strokeWidth={3}/>}<span className="min-w-0 break-words">{x.t}</span></button>;})}</div>
+      <div className="grid gap-2 content-start">{R.defs.map(x=>{const dn=done[x.id];return <button key={x.id} disabled={dn} onClick={()=>clickDef(x)} className={'btn !justify-start text-left !py-3 '+(bad===x.id?'shake':'')} style={{background:dn?hues[x.id%5]+'22':undefined,borderColor:bad===x.id?'var(--bad)':dn?hues[x.id%5]:undefined,color:dn?hues[x.id%5]:undefined,fontWeight:500}}><span className="min-w-0 break-words">{x.d}</span></button>;})}</div>
+    </div>
+  </div>;
+}
+function Hint({h}){
+  const box={background:'#0a1526',border:'1px solid var(--line)',borderRadius:10,padding:'.75rem'};
+  if(h.kind==='pct'){const n=20,f=Math.round(h.p/5);return <div style={box}><div className="text-xs mb-2" style={{color:'var(--muted)'}}>Imagine o total ({h.total}) em 20 caixas de 5% cada. Pinte {h.p}%:</div><div className="grid grid-cols-10 gap-1">{Array.from({length:n},(_,i)=><div key={i} className="rounded" style={{height:22,background:i<f?'var(--gold)':'#14253d',border:'1px solid var(--line)'}}/>)}</div><div className="text-xs mt-2 font-mono" style={{color:'var(--gold)'}}>cada caixa = 5% = {fmt(h.total/20)} · {f} caixas</div></div>;}
+  if(h.kind==='r3')return <div style={box}><div className="text-xs mb-2" style={{color:'var(--muted)'}}>Monte a tabela e pergunte: se uma coluna AUMENTA, a outra {h.dir?'também AUMENTA (direta: cruze e multiplique)':'DIMINUI (inversa: o produto fica igual)'}?</div><div className="grid grid-cols-2 gap-2 text-center font-mono text-sm"><div className="rounded p-2" style={{background:'#14253d'}}>{h.u1}</div><div className="rounded p-2" style={{background:'#14253d'}}>{h.u2}</div><div className="rounded p-2">{h.a}</div><div className="rounded p-2">{h.dir?h.b:h.b}</div><div className="rounded p-2">{h.c}</div><div className="rounded p-2" style={{color:'var(--gold)',fontWeight:700}}>x ?</div></div></div>;
+  if(h.kind==='avg'){const mx=Math.max(...h.nums);const s=h.median?[...h.nums].sort((a,b)=>a-b):h.nums;return <div style={box}><div className="text-xs mb-2" style={{color:'var(--muted)'}}>{h.median?'Ordenados do menor para o maior; a mediana está no meio:':h.mode!=null?'O valor que mais se repete é a moda:':'Some todas as barras e divida pela quantidade:'}</div><div className="flex items-end gap-1.5" style={{height:80}}>{s.map((v,i)=><div key={i} className="flex-1 text-center min-w-0"><div className="rounded-t" style={{height:Math.max(6,v/mx*60),background:h.mode===v?'var(--gold)':'#3b82f6'}}/><div className="text-[11px] font-mono mt-0.5">{v}</div></div>)}</div></div>;}
+  if(h.kind==='seq')return <div style={box}><div className="text-xs mb-2" style={{color:'var(--muted)'}}>Procure o que muda de um número para o outro:</div><div className="flex items-center gap-1 flex-wrap">{h.terms.map((v,i)=><React.Fragment key={i}><span className="font-mono rounded px-2 py-1" style={{background:'#14253d'}}>{v}</span><span className="text-[11px] font-mono" style={{color:'var(--gold)'}}>{h.labels[i]}</span></React.Fragment>)}<span className="font-mono rounded px-2 py-1" style={{border:'1px dashed var(--gold)',color:'var(--gold)'}}>?</span></div></div>;
+  return null;
+}
+function MathGame({best,onEnd}){
+  const [ph,setPh]=useState('idle');const [topic,setTopic]=useState('all');const [p,setP]=useState(null);const [val,setVal]=useState('');const [fb,setFb]=useState(null);const [lives,setLives]=useState(3);const [sc,setSc]=useState(0);const [st,setSt]=useState(0);const [solved,setSolved]=useState(0);const [hint,setHint]=useState(false);const inp=useRef();
+  const lv=1+Math.floor(solved/4);
+  const nextP=(s=solved)=>{setP(genMath(topic,1+Math.floor(s/4)));setVal('');setFb(null);setHint(false);setTimeout(()=>inp.current&&inp.current.focus(),50);};
+  const start=()=>{setLives(3);setSc(0);setSt(0);setSolved(0);setPh('run');setP(genMath(topic,1));setVal('');setFb(null);setHint(false);};
+  const submit=e=>{e.preventDefault();if(fb||val==='')return;const n=parseFloat(String(val).replace(',','.'));const ok=Math.abs(n-p.ans)<0.011;
+    if(ok){const ns=st+1,bonus=(hint?0:5)+Math.min(10,ns*2),gain=10+bonus;setSt(ns);setSc(x=>x+gain);setSolved(x=>x+1);SFX.ok();setFb({ok,gain});}
+    else{const nl=lives-1;setLives(nl);setSt(0);SFX.bad();setFb({ok,gain:0,over:nl<=0});}};
+  const after=()=>{if(fb.over){setPh('end');onEnd(sc);}else nextP(solved);};
+  if(ph==='idle')return <div className="card p-6 max-w-2xl mx-auto"><div className="text-center"><Ic n="Calculator" size={34} className="mx-auto" style={{color:'var(--gold)'}}/><h3 className="font-display font-bold text-2xl mt-2">Sobrevivência em Matemática</h3><p className="text-sm mt-2" style={{color:'var(--muted)'}}>Você tem 3 vidas. Cada problema vem com dica visual e resolução passo a passo. Sem fórmulas complexas, só o que mais cai na prova.</p></div>
+    <div className="flex flex-wrap gap-2 justify-center mt-4">{Object.entries(MATH_TOPICS).map(([k,l])=><button key={k} className={'chip '+(topic===k?'on':'')} onClick={()=>setTopic(k)}>{l}</button>)}</div>
+    <div className="text-center"><p className="text-xs mt-3 font-mono" style={{color:'var(--gold)'}}>Recorde: {best}</p><button className="btn btn-gold mt-3" onClick={start}><Ic n="Play" size={16}/>Começar</button></div></div>;
+  if(ph==='end')return <EndCard title="Fim das vidas" score={sc} best={best} newBest={sc>best} onAgain={()=>setPh('idle')} extra={`${solved} problemas resolvidos.`}/>;
+  return <div className="max-w-2xl mx-auto grid gap-3">
+    <div className="flex items-center justify-between flex-wrap gap-2"><div className="flex gap-1">{[0,1,2].map(i=><Ic key={i} n="Heart" size={22} style={{color:i<lives?'var(--bad)':'#2a3d58',fill:i<lives?'var(--bad)':'none'}}/>)}</div><div className="font-mono text-sm flex gap-4"><span style={{color:'var(--muted)'}}>Nível {lv}</span><span style={{color:'var(--ok)'}}>Seq. {st}</span><span style={{color:'var(--gold)'}}>{sc} pts</span></div></div>
+    <div className={'card p-5 '+(fb&&!fb.ok?'shake':'')} style={{borderColor:fb?(fb.ok?'var(--ok)':'var(--bad)'):undefined}}>
+      <span className="tag tag-m">{p.tipo}</span>
+      <p className="font-display text-lg sm:text-xl mt-2 break-words" style={{lineHeight:1.45}}>{p.texto}</p>
+      {!fb&&<><div className="mt-3"><button className="btn btn-sm" onClick={()=>setHint(h=>!h)}><Ic n="Lightbulb" size={14}/>{hint?'Esconder dica visual':'Dica visual (−5 pts de bônus)'}</button></div>{hint&&<div className="mt-3 rise"><Hint h={p.hint}/></div>}
+        <form className="flex gap-2 mt-4" onSubmit={submit}><input ref={inp} id="resp" className="field font-mono text-lg" inputMode="decimal" autoComplete="off" placeholder="Sua resposta" value={val} onChange={e=>setVal(e.target.value)} autoFocus/><button className="btn btn-gold" type="submit">Responder</button></form></>}
+      {fb&&<div className="mt-3 rise"><div className="font-display font-bold text-lg" style={{color:fb.ok?'var(--ok)':'var(--bad)'}}>{fb.ok?`Correto! +${fb.gain} pts`:`Resposta certa: ${fmt(p.ans)}`}</div>
+        <div className="mt-2 grid gap-1.5 text-sm">{p.steps.map((s,i)=><div key={i} className="flex gap-2"><span className="font-mono flex-none" style={{color:'var(--gold)'}}>{i+1}.</span><span className="break-words">{s}</span></div>)}</div>
+        <div className="mt-3"><Hint h={p.hint}/></div>
+        <button className="btn btn-gold mt-4" onClick={after} autoFocus>{fb.over?'Ver resultado':'Próximo problema'}<Ic n="ChevronRight" size={16}/></button></div>}
+    </div>
+  </div>;
+}
+
+/* ============ APP ============ */
+const TABS=[{id:'home',nome:'Missão',ic:'Target'},{id:'plan',nome:'Cronograma',ic:'CalendarDays'},{id:'edital',nome:'Edital',ic:'BookOpen'},{id:'cards',nome:'Flashcards',ic:'Layers'},{id:'arena',nome:'Arena',ic:'Gamepad2'}];
+function App(){
+  const [S,setS]=useState(load);const [store,setStore]=useState(true);const [today,setToday]=useState(todayISO());
+  const [modal,setModal]=useState(null);const [toasts,setToasts]=useState([]);
+  const [pomo,setPomo]=useState({open:false,mode:'focus',running:false,endAt:0,left:FOCUS,cycles:0,label:'',blockKey:null});
+  const D=useDerived(S);SOUND_ON=!!S.sound;
+  useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){setStore(false);}},[S]);
+  useEffect(()=>{const id=setInterval(()=>setToday(todayISO()),60000);return()=>clearInterval(id);},[]);
+  const toast=useCallback((m,k)=>{const id=uid();setToasts(t=>[...t,{id,m,k}]);setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),3200);},[]);
+  const addXp=useCallback(n=>setS(s=>({...s,xp:(s.xp||0)+n})),[]);
+  const bestSet=useCallback((k,sc)=>setS(s=>({...s,best:{...s.best,[k]:Math.max(s.best[k]||0,sc)}})),[]);
+  const goTab=t=>{setS(s=>({...s,tab:t}));window.scrollTo({top:0});};
+  // patente: celebra subida
+  const prevRank=useRef(D.rankIdx);
+  useEffect(()=>{if(D.rankIdx>prevRank.current){SFX.rank();toast('Nova patente: '+RANKS[D.rankIdx].n+'!','gold');burst(window.innerWidth/2,120,40);}prevRank.current=D.rankIdx;},[D.rankIdx]);
+  // pomodoro: relógio
+  useEffect(()=>{if(!pomo.running)return;const id=setInterval(()=>setPomo(p=>{if(!p.running)return p;const left=Math.max(0,Math.round((p.endAt-Date.now())/1000));return left===p.left?p:{...p,left};}),250);return()=>clearInterval(id);},[pomo.running]);
+  useEffect(()=>{
+    if(!pomo.running||pomo.left>0)return;
+    if(pomo.mode==='focus'){
+      SFX.done();const td=todayISO(),bk=pomo.blockKey;
+      setS(s=>({...s,studied:{...s.studied,[td]:true},minutes:{...s.minutes,[td]:(s.minutes[td]||0)+40},xp:(s.xp||0)+15,mission:bk?{...s.mission,[bk]:true}:s.mission}));
+      toast('Foco concluído! +15 XP. Hora da pausa de 10 min.','ok');
+      setPomo(p=>({...p,mode:'break',left:BREAK,endAt:Date.now()+BREAK*1000,cycles:p.cycles+1}));
+    }else{SFX.done();toast('Pausa encerrada. Pronto para o próximo foco?','gold');setPomo(p=>({...p,mode:'focus',left:FOCUS,running:false}));}
+  },[pomo.left,pomo.running]);
+  const openPomo=(b)=>{
+    const label=b?`${SUBJ[b.subject]?.curto}: ${b.foco}`:'Sessão livre';
+    setPomo(p=>(p.running&&p.label===label)?{...p,open:true}:{...p,open:true,mode:'focus',running:false,left:FOCUS,label,blockKey:b?today+':'+b.id:null});
+  };
+  const wd=new Date().getDay(),tb=(S.schedule[wd]||[]).slice().sort((a,b)=>a.start.localeCompare(b.start));
+  const showBanner=S.bannerOff!==today&&tb.length>0&&!S.studied[today];
+  const rk=RANKS[D.rankIdx];const streak=calcStreak(S.studied);
+  return <div className="max-w-6xl mx-auto" style={{paddingBottom:'96px'}}>
+    <header className="sticky z-40 -mx-4 px-4 py-2.5 md:py-3" style={{top:'env(safe-area-inset-top,0px)',background:'rgba(7,14,27,.97)',borderBottom:'1px solid var(--line)'}}>
+      <div className="flex items-center gap-3 flex-wrap md:flex-nowrap">
+        <div className="flex items-center gap-2.5 min-w-0 mr-auto">
+          <div className="grid place-items-center rounded-lg flex-none" style={{width:34,height:34,background:'rgba(242,193,78,.14)',border:'1px solid rgba(242,193,78,.5)',color:'var(--gold)'}}><Ic n="Shield" size={20}/></div>
+          <div className="min-w-0"><div className="font-display font-bold leading-tight tracking-wide truncate">OPERAÇÃO PMBA</div><div className="label !text-[9px] truncate">Painel tático de estudos</div></div>
+        </div>
+        <nav className="nav-bottom md:order-none"><div className="flex justify-between md:gap-1 max-w-6xl mx-auto">{TABS.map(t=><button key={t.id} onClick={()=>goTab(t.id)} aria-current={S.tab===t.id?'page':undefined} className="flex flex-col md:flex-row items-center gap-0.5 md:gap-2 flex-1 md:flex-none py-2 md:px-3 md:py-2 rounded-lg" style={{background:'none',border:0,cursor:'pointer',color:S.tab===t.id?'var(--gold)':'var(--muted)',fontSize:11,fontWeight:600,...(S.tab===t.id?{background:'rgba(242,193,78,.1)'}:{})}}><Ic n={t.ic} size={20}/><span className="md:text-sm">{t.nome}</span></button>)}</div></nav>
+        <div className="flex items-center gap-1.5">
+          <span className="chip hidden sm:inline-flex" style={{color:'var(--gold)',cursor:'default'}}><Ic n={rk.ic} size={13}/>{rk.n}</span>
+          <span className="chip" style={{color:streak?'#fb923c':undefined,cursor:'default'}}><Ic n="Flame" size={13}/>{streak}</span>
+          {pomo.running&&<button className="chip on font-mono" onClick={()=>setPomo(p=>({...p,open:true}))}><Ic n="Timer" size={13}/>{ft(pomo.left)}</button>}
+          <button className="btn btn-sm btn-ghost !px-2" onClick={()=>setS(s=>({...s,sound:!s.sound}))} aria-label={S.sound?'Desligar som':'Ligar som'}><Ic n={S.sound?'Volume2':'VolumeX'} size={16}/></button>
+          <button className="btn btn-sm !px-2.5" onClick={()=>setModal('backup')}><Ic n="Save" size={15}/><span className="hidden lg:inline">Backup</span></button>
+        </div>
+      </div>
+    </header>
+    {showBanner&&<div className="mt-4 rounded-xl p-3 flex items-center gap-3 flex-wrap rise" style={{background:'rgba(242,193,78,.1)',border:'1px solid rgba(242,193,78,.45)'}}>
+      <Ic n="Bell" size={20} style={{color:'var(--gold)'}} className="flex-none"/>
+      <div className="min-w-0 flex-1 basis-60 text-sm"><b style={{color:'var(--gold)'}}>Lembrete:</b> hoje você estuda {tb.map(b=>SUBJ[b.subject]?.curto).join(' → ')}, a partir das <b className="font-mono">{tb[0].start}</b>.</div>
+      <button className="btn btn-sm btn-gold" onClick={()=>openPomo(tb[0])}><Ic n="Play" size={13}/>Começar</button>
+      <button className="btn btn-sm" onClick={()=>setModal('ics')}><Ic n="CalendarPlus" size={13}/>Agenda</button>
+      <button className="btn btn-sm btn-ghost !px-2" onClick={()=>setS(s=>({...s,bannerOff:today}))} aria-label="Dispensar lembrete"><Ic n="X" size={14}/></button>
+    </div>}
+    {!store&&<div className="mt-4 rounded-xl p-3 text-sm" style={{background:'rgba(240,97,109,.1)',border:'1px solid rgba(240,97,109,.4)'}}>Este navegador está bloqueando o salvamento automático. Use o botão Backup para guardar seu progresso.</div>}
+    <main className="mt-4" key={S.tab}><div className="rise">
+      {S.tab==='home'&&<Home S={S} setS={setS} D={D} today={today} openPomo={openPomo} openIcs={()=>setModal('ics')} goTab={goTab}/>}
+      {S.tab==='plan'&&<Plan S={S} setS={setS} today={today} openPomo={openPomo}/>}
+      {S.tab==='edital'&&<Edital S={S} setS={setS}/>}
+      {S.tab==='cards'&&<Cards S={S} setS={setS} addXp={addXp}/>}
+      {S.tab==='arena'&&<Arena S={S} setS={setS} addXp={addXp} bestSet={bestSet}/>}
+    </div></main>
+    {modal==='ics'&&<IcsModal S={S} setS={setS} onClose={()=>setModal(null)} toast={toast}/>}
+    {modal==='backup'&&<BackupModal S={S} setS={setS} onClose={()=>setModal(null)} toast={toast}/>}
+    {pomo.open&&<PomoModal pomo={pomo} setPomo={setPomo} onClose={()=>setPomo(p=>({...p,open:false}))}/>}
+    <div className="fixed left-0 right-0 z-[90] flex flex-col items-center gap-2 pointer-events-none" style={{bottom:'calc(88px + env(safe-area-inset-bottom,0px))'}}>{toasts.map(t=><div key={t.id} className="rise rounded-xl px-4 py-2.5 text-sm font-semibold max-w-[92vw]" style={{background:t.k==='gold'?'var(--gold)':t.k==='ok'?'var(--ok)':'var(--lead)',color:t.k?'#14100a':'var(--fg)',boxShadow:'0 8px 30px rgba(0,0,0,.5)'}}>{t.m}</div>)}</div>
+  </div>;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
